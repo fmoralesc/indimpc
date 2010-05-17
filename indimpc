@@ -1,0 +1,132 @@
+#!/usr/bin/env python
+
+import gobject
+import gtk
+import socket, errno, sys, os.path
+import dbus, dbus.mainloop.glib
+import appindicator
+import pynotify
+from mpd import MPDClient
+
+def current_song_notify():
+	global mpdclient
+	global oldsongdata
+	currentsongdata = mpdclient.currentsong()
+	if currentsongdata != {} and currentsongdata != oldsongdata:
+		if mpdclient.status()["time"].split(":")[0] == "3":
+			if currentsongdata.has_key("title"):
+				ctitle = currentsongdata["title"]
+			else:
+				ctitle = currentsongdata["file"]
+			if currentsongdata.has_key("artist"):
+				cartist = currentsongdata["artist"]
+			else:
+				cartist = ""
+			if currentsongdata.has_key("album"):
+				if os.path.exists(os.path.expanduser("~/.covers/"+cartist+"-"+currentsongdata["album"]+".jpg")):
+					ccover = os.path.expanduser("~/.covers/"+cartist+"-"+currentsongdata["album"]+".jpg")
+				elif os.path.exists("/var/lib/mpd/music/" + os.path.dirname(currentsongdata["file"])+"/cover.jpg"):
+					ccover = "/var/lib/mpd/music/" + os.path.dirname(currentsongdata["file"])+"/cover.jpg"
+				else:
+					ccover = None
+			oldsongdata = currentsongdata
+			current_song = pynotify.Notification(ctitle, cartist, ccover)
+			current_song.show()
+	return True
+
+def action_handler(menu,action):
+	global mpdclient
+	try:
+		mpdclient.status()
+	except socket.error, e: 
+		if e.errno == errno.EPIPE: #the pipe is broken
+			print "WARNING: The client pipe was broken. Will attempt to restart the connection."
+			client_setup() #let's restart the client
+
+	if action == "Toggle":
+		if mpdclient.status()['state'] == 'stop' and mpdclient.currentsong() != {}:
+			mpdclient.play()
+		elif mpdclient.status()['state'] in ('play', 'pause'):
+			mpdclient.pause()
+		elif mpdclient.currentsong() == {} and mpdclient.playlistinfo() != []:
+			mpdclient.play()
+		else:
+			no_music_notify = pynotify.Notification("Hey, there's nothing to play", 
+			"Add some music to your MPD playlist, silly!", None)
+			no_music_notify.show()
+	elif action == "Stop":
+		mpdclient.stop()
+	elif action == "Next":
+		mpdclient.next()
+	elif action == "Prev":
+		mpdclient.previous()
+	elif action == "Quit":
+		gtk.main_quit()
+	else:
+		pass
+
+def delegate_mediakeys(*mmkeys):
+	for key in mmkeys:
+		if key == "Play":
+			action_handler(None, "Toggle")
+		elif key == "Stop":
+			action_handler(None, "Stop")
+		elif key == "Next":
+			action_handler(None, "Next")
+		elif key == "Previous":
+			action_handler(None, "Prev")
+
+def client_setup():
+	global mpdclient
+	try:
+		mpdclient = MPDClient()
+		mpdclient.connect("localhost", 6600)
+	except socket.error, e:
+		no_connect_notify = pynotify.Notification("ERROR! Can't connect to MPD server.", 
+		"Maybe sudo /etd/init.d/mpd restart will help?", None)
+		no_connect_notify.show()
+		sys.exit()
+
+if __name__ == "__main__":
+	client_setup()
+	
+	#create the app indicator
+	ind = appindicator.Indicator ("indimpc", "sonata", appindicator.CATEGORY_APPLICATION_STATUS)
+	ind.set_status (appindicator.STATUS_ACTIVE)
+
+	#prepare the notifications
+	notifier = pynotify.init("indimpc")
+	csong_timeout = gobject.timeout_add(999, current_song_notify)
+	oldsongdata = ""
+
+	#grab multimedia keys
+	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+	bus = dbus.Bus(dbus.Bus.TYPE_SESSION)
+	keysbus = bus.get_object("org.gnome.SettingsDaemon", "/org/gnome/SettingsDaemon/MediaKeys")
+	keysbus.GrabMediaPlayerKeys("indimpc", 0, dbus_interface="org.gnome.SettingsDaemon.MediaKeys")
+	keysbus.connect_to_signal("MediaPlayerKeyPressed", delegate_mediakeys)
+
+	# create a menu
+	menu = gtk.Menu()
+
+	mn_toggle = gtk.MenuItem("Toggle")
+	mn_toggle.connect("activate", action_handler, "Toggle")
+	mn_prev = gtk.MenuItem("Previous")
+	mn_prev.connect("activate", action_handler, "Prev")
+	mn_next = gtk.MenuItem("Next")
+	mn_next.connect("activate", action_handler, "Next")
+	mn_quit = gtk.MenuItem("Quit")
+	mn_quit.connect("activate", action_handler, "Quit")
+
+	menu.append(mn_toggle)
+	menu.append(mn_prev)
+	menu.append(mn_next)
+	menu.append(mn_quit)
+	mn_toggle.show()
+	mn_prev.show()
+	mn_next.show()
+	mn_quit.show()
+
+	ind.set_menu(menu)
+
+	gtk.main()
