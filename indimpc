@@ -25,10 +25,12 @@ def current_song_notify():
 			if currentsongdata.has_key("album"):
 				if os.path.exists(os.path.expanduser("~/.covers/"+cartist+"-"+currentsongdata["album"]+".jpg")):
 					ccover = os.path.expanduser("~/.covers/"+cartist+"-"+currentsongdata["album"]+".jpg")
-				elif os.path.exists("/var/lib/mpd/music/" + os.path.dirname(currentsongdata["file"])+"/cover.jpg"):
-					ccover = "/var/lib/mpd/music/" + os.path.dirname(currentsongdata["file"])+"/cover.jpg"
 				else:
 					ccover = None
+			else:
+				ccover = None
+			if os.path.exists("/var/lib/mpd/music/" + os.path.dirname(currentsongdata["file"])+"/cover.jpg"):
+					ccover = "/var/lib/mpd/music/" + os.path.dirname(currentsongdata["file"])+"/cover.jpg"
 			oldsongdata = currentsongdata
 			current_song = pynotify.Notification(ctitle, cartist, ccover)
 			current_song.show()
@@ -115,16 +117,19 @@ if __name__ == "__main__":
 	mn_prev.connect("activate", action_handler, "Prev")
 	mn_next = gtk.MenuItem("Next")
 	mn_next.connect("activate", action_handler, "Next")
+	mn_separator = gtk.SeparatorMenuItem()
 	mn_quit = gtk.MenuItem("Quit")
 	mn_quit.connect("activate", action_handler, "Quit")
 
 	menu.append(mn_toggle)
 	menu.append(mn_prev)
 	menu.append(mn_next)
+	menu.append(mn_separator)
 	menu.append(mn_quit)
 	mn_toggle.show()
 	mn_prev.show()
 	mn_next.show()
+	mn_separator.show()
 	mn_quit.show()
 
 	ind.set_menu(menu)
