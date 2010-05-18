@@ -8,41 +8,41 @@ import appindicator
 import pynotify
 from mpd import MPDClient
 
-def truncate(content, length=20, suffix='...'):
-    if len(content) <= length:
-        return content
-	return content[:length].rsplit(' ', 1)[0]+suffix
-
-def current_song_notify():
+def current_song_notify(override=False):
 	global mpdclient
 	global oldsongdata
 	currentsongdata = mpdclient.currentsong()
-	if currentsongdata != {} and currentsongdata != oldsongdata:
-		if mpdclient.status()["time"].split(":")[0] == "3":
+	if (currentsongdata != {} and currentsongdata != oldsongdata) or override==True:
+		if (mpdclient.status()["time"].split(":")[0] == "3") or override==True:
 			if currentsongdata.has_key("title"):
-				ctitle = currentsongdata["title"]
+				if currentsongdata.has_key("name"):
+					cartist, ctitle = currentsongdata["title"].split(" - ")
+				else:
+					ctitle = currentsongdata["title"]
 			else:
 				ctitle = currentsongdata["file"]
 			if currentsongdata.has_key("artist"):
 				cartist = currentsongdata["artist"]
-			else:
+			elif cartist == None:
 				cartist = ""
 			if currentsongdata.has_key("album"):
 				if os.path.exists(os.path.expanduser("~/.covers/"+cartist+"-"+currentsongdata["album"]+".jpg")):
 					ccover = os.path.expanduser("~/.covers/"+cartist+"-"+currentsongdata["album"]+".jpg")
 				else:
-					ccover = None
+					ccover = "media-playback-start"
 			else:
-				ccover = None
+				ccover = "media-playback-start"
 			if os.path.exists("/var/lib/mpd/music/" + os.path.dirname(currentsongdata["file"])+"/cover.jpg"):
-					ccover = "/var/lib/mpd/music/" + os.path.dirname(currentsongdata["file"])+"/cover.jpg"
+				ccover = "/var/lib/mpd/music/" + os.path.dirname(currentsongdata["file"])+"/cover.jpg"
 			oldsongdata = currentsongdata
 			current_song = pynotify.Notification(ctitle, cartist, ccover)
 			current_song.show()
 		elif currentsongdata.has_key("name"):
-			oldsongdata = currentsongdata
-			current_song = pynotify.Notification(currentsongdata["title"], "via " + truncate(currentsongdata["name"]), None)
-			current_song.show()
+			if currentsongdata.has_key("title"):
+				oldsongdata = currentsongdata
+				cartist, ctitle = currentsongdata["title"].split(" - ")
+				current_song = pynotify.Notification(ctitle, cartist, "media-playback-start")
+				current_song.show()
 	return True
 
 def action_handler(menu,action):
@@ -71,6 +71,8 @@ def action_handler(menu,action):
 		mpdclient.next()
 	elif action == "Prev":
 		mpdclient.previous()
+	elif action == "Info":
+		current_song_notify(override=True)
 	elif action == "Quit":
 		gtk.main_quit()
 	else:
@@ -123,26 +125,27 @@ if __name__ == "__main__":
 	# create a menu
 	menu = gtk.Menu()
 
+	mn_info = gtk.MenuItem("Info")
+	mn_info.connect("activate", action_handler, "Info")
+	mn_separator1 = gtk.SeparatorMenuItem()
 	mn_toggle = gtk.MenuItem("Toggle")
 	mn_toggle.connect("activate", action_handler, "Toggle")
 	mn_prev = gtk.MenuItem("Previous")
 	mn_prev.connect("activate", action_handler, "Prev")
 	mn_next = gtk.MenuItem("Next")
 	mn_next.connect("activate", action_handler, "Next")
-	mn_separator = gtk.SeparatorMenuItem()
+	mn_separator2 = gtk.SeparatorMenuItem()
 	mn_quit = gtk.MenuItem("Quit")
 	mn_quit.connect("activate", action_handler, "Quit")
 
+	menu.append(mn_info)
+	menu.append(mn_separator1)
 	menu.append(mn_toggle)
 	menu.append(mn_prev)
 	menu.append(mn_next)
-	menu.append(mn_separator)
+	menu.append(mn_separator2)
 	menu.append(mn_quit)
-	mn_toggle.show()
-	mn_prev.show()
-	mn_next.show()
-	mn_separator.show()
-	mn_quit.show()
+	menu.show_all()
 
 	ind.set_menu(menu)
 
