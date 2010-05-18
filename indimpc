@@ -8,6 +8,11 @@ import appindicator
 import pynotify
 from mpd import MPDClient
 
+def truncate(content, length=20, suffix='...'):
+    if len(content) <= length:
+        return content
+	return content[:length].rsplit(' ', 1)[0]+suffix
+
 def current_song_notify():
 	global mpdclient
 	global oldsongdata
@@ -33,6 +38,10 @@ def current_song_notify():
 					ccover = "/var/lib/mpd/music/" + os.path.dirname(currentsongdata["file"])+"/cover.jpg"
 			oldsongdata = currentsongdata
 			current_song = pynotify.Notification(ctitle, cartist, ccover)
+			current_song.show()
+		elif currentsongdata.has_key("name"):
+			oldsongdata = currentsongdata
+			current_song = pynotify.Notification(currentsongdata["title"], "via " + truncate(currentsongdata["name"]), None)
 			current_song.show()
 	return True
 
@@ -84,9 +93,12 @@ def client_setup():
 		mpdclient = MPDClient()
 		mpdclient.connect("localhost", 6600)
 	except socket.error, e:
-		no_connect_notify = pynotify.Notification("ERROR! Can't connect to MPD server.", 
-		"Maybe sudo /etd/init.d/mpd restart will help?", None)
+		error_msg = ["ERROR! Can't connect to MPD server.", 
+		"Maybe sudo /etd/init.d/mpd restart will help?", "Meanwhile, I'll quit."]
+		no_connect_notify = pynotify.Notification(error_msg[0], error_msg[1]+"\n"+error_msg[2], None)
 		no_connect_notify.show()
+		print error_msg[0]
+		print error_msg[1]
 		sys.exit()
 
 if __name__ == "__main__":
@@ -98,7 +110,7 @@ if __name__ == "__main__":
 
 	#prepare the notifications
 	notifier = pynotify.init("indimpc")
-	csong_timeout = gobject.timeout_add(999, current_song_notify)
+	csong_timeout = gobject.timeout_add(500, current_song_notify)
 	oldsongdata = ""
 
 	#grab multimedia keys
