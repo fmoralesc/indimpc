@@ -58,6 +58,8 @@ def action_handler(menu,action):
 		if mpdclient.status()['state'] == 'stop' and mpdclient.currentsong() != {}:
 			mpdclient.play()
 		elif mpdclient.status()['state'] in ('play', 'pause'):
+			if mpdclient.status()['state'] == 'pause':
+				current_song_notify(override=True)
 			mpdclient.pause()
 		elif mpdclient.currentsong() == {} and mpdclient.playlistinfo() != []:
 			mpdclient.play()
