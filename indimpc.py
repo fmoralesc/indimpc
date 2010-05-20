@@ -8,6 +8,42 @@ import appindicator
 import pynotify
 from mpd import MPDClient
 
+# Looks for album art
+def get_coverart(songdata):
+	# we look in the song folder first
+	song_dirname = "/var/lib/mpd/music/" + os.path.dirname(songdata["file"]) + "/"
+	if os.path.exists(song_dirname + "cover.jpg"):
+		return song_dirname + "cover.jpg"
+	elif os.path.exists(song_dirname + "album.jpg"):
+		return song_dirname + "album.jpg"
+	# we can take advantage of sonata's cover database in ~/.covers
+	if songdata.has_key("album"):
+		if os.path.exists(os.path.expanduser("~/.covers/" + get_artist(songdata) + "-" + songdata["album"] + ".jpg")):
+			return os.path.expanduser("~/.covers/" + get_artist(songdata) + "-" + songdata["album"] + ".jpg")
+	return "media-playback-start" #default
+
+# Returns song title
+def get_title(songdata):
+	if songdata.has_key("title"):
+		if songdata.has_key("name"): # we can assume it's a radio or stream
+			# we split the title from the info we have
+			# for streams, "title" is usually of the form "artist - title"
+			return songdata["title"].split(" - ")[1]
+		else:
+			return songdata["title"]
+	else: # there's no data
+		return songdata["file"] # we return the file path
+
+# Returns song artist
+def get_artist(songdata):
+	if songdata.has_key("name"): # we can assume it's a radio or stream
+		if songdata.has_key("title"): # we grab the artist info from the title
+			return songdata["title"].split(" - ")[0]
+	elif songdata.has_key("artist"):
+		return songdata["artist"]
+	else: #there's no data
+		return ""
+
 # Sends a notification with the current song data.
 def current_song_notify(override=False):
 	global mpdclient
@@ -15,59 +51,28 @@ def current_song_notify(override=False):
 	
 	currentsongdata = mpdclient.currentsong()
 	
-	# if we have new data about the song, or we explicitly said we wanted to notify
-	if (currentsongdata != {} and currentsongdata != oldsongdata) or override==True:
-		# if 3 seconds have passed since the beggining of the song (so we don't notify while 
-		# quickly advancing in the playlist), or we explicitly said we wanted to notify
-		if (mpdclient.status()["time"].split(":")[0] == "3") or override==True:
-			
-			# check for title info
-			if currentsongdata.has_key("title"):
-				# if we have a name, we can assume it's a radio stream.
-				# we must get our metadata from "title". we won't have "artist" or "album".
-				if currentsongdata.has_key("name"):
-					# usually "title" will be of the form "artist - title"
-					cartist, ctitle = currentsongdata["title"].split(" - ")
-				else:
-					ctitle = currentsongdata["title"]
-			else: # if we dont have a title
-				ctitle = currentsongdata["file"]
-			
-			# check for artist info
-			if currentsongdata.has_key("artist"):
-				cartist = currentsongdata["artist"]
-			else:
-				cartist = ""
-			
-			# look for cover art.
-			# first, check for album.
-			# we default to this.
-			ccover = "media-playback-start"
-			
-			if currentsongdata.has_key("album"):
-				# we take advantage of sonata's behaviour.
-				if os.path.exists(os.path.expanduser("~/.covers/"+cartist+"-"+currentsongdata["album"]+".jpg")):
-					ccover = os.path.expanduser("~/.covers/"+cartist+"-"+currentsongdata["album"]+".jpg")
-				else:
-					ccover = "media-playback-start"
-			# now, we look in the current directory
-			if os.path.exists("/var/lib/mpd/music/" + os.path.dirname(currentsongdata["file"])+"/cover.jpg"):
-				ccover = "/var/lib/mpd/music/" + os.path.dirname(currentsongdata["file"])+"/cover.jpg"
+	if currentsongdata != {}: # we have data
+		# if it's a new song or if we explicitly want to notify
+		if currentsongdata != oldsongdata or override == True:
 
+			# we get our info
+			ctitle = get_title(currentsongdata)
+			cartist = get_artist(currentsongdata)
+			ccover = get_coverart(currentsongdata)
+			
+			# if it's a local file, we wait 3 seconds, so we don't get notified needlessly if we're just
+			# quickly advancing in the playlist. If it's a remote source (radio or stream), we notify
+			# as soon as the data changes.
+			if mpdclient.status()["time"].split(":")[0] == "3" or currentsongdata.has_key("name") or override == True:
+				csong_notification = pynotify.Notification(ctitle, cartist, ccover)
+				csong_notification.show()
+			
+			# we save the old info so we can check later for song changes
 			oldsongdata = currentsongdata
-
-			current_song = pynotify.Notification(ctitle, cartist, ccover)
-			current_song.show()
-
-		# if we have "name", we can assume we are listening to a radio.
-		elif currentsongdata.has_key("name"):
-			if currentsongdata.has_key("title"):
-				oldsongdata = currentsongdata
-				cartist, ctitle = currentsongdata["title"].split(" - ")
-				current_song = pynotify.Notification(ctitle, cartist, "media-playback-start")
-				current_song.show()
+	else: #we don't have data
+		pass #we just wait for the next run
 	
-	return True #otherwise this function won't run again.
+	return True # otherwise this function won't run again.
 
 def action_handler(menu,action):
 	global mpdclient
@@ -78,20 +83,19 @@ def action_handler(menu,action):
 			print "WARNING: The client pipe was broken. Will attempt to restart the connection."
 			client_setup() #let's restart the client
 
-	# play/pause
+	# toggle playback (silence/noise ;))
 	if action == "Toggle":
-		# if mpd is stopped, but there's a song we can play
-		if mpdclient.status()['state'] == 'stop' and mpdclient.currentsong() != {}:
-			mpdclient.play()
-		# if mpd is playing or paused, we simply toggle
-		elif mpdclient.status()['state'] in ('play', 'pause'):
-			# if we recover from pause, we notify of the song
-			if mpdclient.status()['state'] == 'pause':
-				current_song_notify(override=True)
-			mpdclient.pause()
-		# if there is no selected song, but we have a playlist
-		elif mpdclient.currentsong() == {} and mpdclient.playlistinfo() != []:
-			mpdclient.play() # plays the first song in the playlist
+		if mpdclient.playlistinfo() != []: #if there's a playlist
+			if mpdclient.currentsong() != {}: #if there's a selected song
+				state = mpdclient.status()['state']
+				if state == "stop":
+					mpdclient.play() # play the song from the beginning.
+				elif state in ("play", "pause"):
+					mpdclient.pause() # toggle play/pause
+					if state == "pause": # we always notify if we recover from pause.
+						current_song_notify(override=True)
+			else:
+				mpdclient.play() # we play from the beginning of the playlist
 		else: #there's no playlist
 			no_music_notify = pynotify.Notification("Hey, there's nothing to play", 
 			"Add some music to your MPD playlist, silly!", None)
