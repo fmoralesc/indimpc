@@ -62,9 +62,9 @@ def current_song_notify(override=False):
 			# if it's a local file, unless we've just started, we wait 3 seconds, so we don't get
 			#notified needlessly if we're just  quickly advancing in the playlist.
 			#If it's a remote source (radio or stream), we notify as soon as the data changes.
-			if not mpdclient.status()["time"].split(":")[0] == "3":
-				if not currentsongdata.has_key("name"):
-					if not oldsongdata == "":
+			if not oldsongdata == "":
+				if not mpdclient.status()["time"].split(":")[0] == "3":
+					if not currentsongdata.has_key("name"):
 						return True
 				
 			csong_notification = pynotify.Notification(ctitle, cartist, ccover)
