@@ -58,9 +58,10 @@ def current_song_notify(override=False):
 			#notified needlessly if we're just  quickly advancing in the playlist.
 			#If it's a remote source (radio or stream), we notify as soon as the data changes.
 			if not oldsongdata == "":
-				if not mpdclient.status()["time"].split(":")[0] == "3":
-					if not currentsongdata.has_key("name"):
-						return True
+				if override != True:
+					if not mpdclient.status()["time"].split(":")[0] == "3":
+						if not currentsongdata.has_key("name"):
+							return True
 	
 			# we get our info
 			ctitle = get_title(currentsongdata)
@@ -94,9 +95,11 @@ def action_handler(menu,action):
 				if state == "stop":
 					mpdclient.play() # play the song from the beginning.
 				elif state in ("play", "pause"):
-					mpdclient.pause() # toggle play/pause
 					if state == "pause": # we always notify if we recover from pause.
+						print "from pause"
 						current_song_notify(override=True)
+					mpdclient.pause() # toggle play/pause
+
 			else:
 				mpdclient.play() # we play from the beginning of the playlist
 		else: #there's no playlist
