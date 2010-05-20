@@ -54,18 +54,21 @@ def current_song_notify(override=False):
 	if currentsongdata != {}: # we have data
 		# if it's a new song or if we explicitly want to notify
 		if currentsongdata != oldsongdata or override == True:
-
 			# we get our info
 			ctitle = get_title(currentsongdata)
 			cartist = get_artist(currentsongdata)
 			ccover = get_coverart(currentsongdata)
 			
-			# if it's a local file, we wait 3 seconds, so we don't get notified needlessly if we're just
-			# quickly advancing in the playlist. If it's a remote source (radio or stream), we notify
-			# as soon as the data changes.
-			if mpdclient.status()["time"].split(":")[0] == "3" or currentsongdata.has_key("name") or override == True:
-				csong_notification = pynotify.Notification(ctitle, cartist, ccover)
-				csong_notification.show()
+			# if it's a local file, unless we've just started, we wait 3 seconds, so we don't get
+			#notified needlessly if we're just  quickly advancing in the playlist.
+			#If it's a remote source (radio or stream), we notify as soon as the data changes.
+			if not mpdclient.status()["time"].split(":")[0] == "3":
+				if not currentsongdata.has_key("name"):
+					if not oldsongdata == "":
+						return True
+				
+			csong_notification = pynotify.Notification(ctitle, cartist, ccover)
+			csong_notification.show()
 			
 			# we save the old info so we can check later for song changes
 			oldsongdata = currentsongdata
@@ -147,6 +150,8 @@ def client_setup():
 
 if __name__ == "__main__":
 	client_setup()
+	oldsongdata = ""
+
 	
 	#create the app indicator
 	ind = appindicator.Indicator ("indimpc", "sonata", appindicator.CATEGORY_APPLICATION_STATUS)
@@ -155,7 +160,6 @@ if __name__ == "__main__":
 	#prepare the notifications
 	notifier = pynotify.init("indimpc")
 	csong_timeout = gobject.timeout_add(500, current_song_notify)
-	oldsongdata = ""
 
 	#grab multimedia keys
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
