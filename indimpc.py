@@ -8,42 +8,66 @@ import appindicator
 import pynotify
 from mpd import MPDClient
 
+# Sends a notification with the current song data.
 def current_song_notify(override=False):
 	global mpdclient
 	global oldsongdata
+	
 	currentsongdata = mpdclient.currentsong()
+	
+	# if we have new data about the song, or we explicitly said we wanted to notify
 	if (currentsongdata != {} and currentsongdata != oldsongdata) or override==True:
+		# if 3 seconds have passed since the beggining of the song (so we don't notify while 
+		# quickly advancing in the playlist), or we explicitly said we wanted to notify
 		if (mpdclient.status()["time"].split(":")[0] == "3") or override==True:
+			
+			# check for title info
 			if currentsongdata.has_key("title"):
+				# if we have a name, we can assume it's a radio stream.
+				# we must get our metadata from "title". we won't have "artist" or "album".
 				if currentsongdata.has_key("name"):
+					# usually "title" will be of the form "artist - title"
 					cartist, ctitle = currentsongdata["title"].split(" - ")
 				else:
 					ctitle = currentsongdata["title"]
-			else:
+			else: # if we dont have a title
 				ctitle = currentsongdata["file"]
+			
+			# check for artist info
 			if currentsongdata.has_key("artist"):
 				cartist = currentsongdata["artist"]
-			elif cartist == None:
+			else:
 				cartist = ""
+			
+			# look for cover art.
+			# first, check for album.
+			# we default to this.
+			ccover = "media-playback-start"
+			
 			if currentsongdata.has_key("album"):
+				# we take advantage of sonata's behaviour.
 				if os.path.exists(os.path.expanduser("~/.covers/"+cartist+"-"+currentsongdata["album"]+".jpg")):
 					ccover = os.path.expanduser("~/.covers/"+cartist+"-"+currentsongdata["album"]+".jpg")
 				else:
 					ccover = "media-playback-start"
-			else:
-				ccover = "media-playback-start"
+			# now, we look in the current directory
 			if os.path.exists("/var/lib/mpd/music/" + os.path.dirname(currentsongdata["file"])+"/cover.jpg"):
 				ccover = "/var/lib/mpd/music/" + os.path.dirname(currentsongdata["file"])+"/cover.jpg"
+
 			oldsongdata = currentsongdata
+
 			current_song = pynotify.Notification(ctitle, cartist, ccover)
 			current_song.show()
+
+		# if we have "name", we can assume we are listening to a radio.
 		elif currentsongdata.has_key("name"):
 			if currentsongdata.has_key("title"):
 				oldsongdata = currentsongdata
 				cartist, ctitle = currentsongdata["title"].split(" - ")
 				current_song = pynotify.Notification(ctitle, cartist, "media-playback-start")
 				current_song.show()
-	return True
+	
+	return True #otherwise this function won't run again.
 
 def action_handler(menu,action):
 	global mpdclient
@@ -54,32 +78,43 @@ def action_handler(menu,action):
 			print "WARNING: The client pipe was broken. Will attempt to restart the connection."
 			client_setup() #let's restart the client
 
+	# play/pause
 	if action == "Toggle":
+		# if mpd is stopped, but there's a song we can play
 		if mpdclient.status()['state'] == 'stop' and mpdclient.currentsong() != {}:
 			mpdclient.play()
+		# if mpd is playing or paused, we simply toggle
 		elif mpdclient.status()['state'] in ('play', 'pause'):
+			# if we recover from pause, we notify of the song
 			if mpdclient.status()['state'] == 'pause':
 				current_song_notify(override=True)
 			mpdclient.pause()
+		# if there is no selected song, but we have a playlist
 		elif mpdclient.currentsong() == {} and mpdclient.playlistinfo() != []:
-			mpdclient.play()
-		else:
+			mpdclient.play() # plays the first song in the playlist
+		else: #there's no playlist
 			no_music_notify = pynotify.Notification("Hey, there's nothing to play", 
 			"Add some music to your MPD playlist, silly!", None)
 			no_music_notify.show()
+	# stop (only multimedia keys)
 	elif action == "Stop":
 		mpdclient.stop()
+	# next song
 	elif action == "Next":
 		mpdclient.next()
+	# previous song
 	elif action == "Prev":
 		mpdclient.previous()
+	# notify of current song, overriding
 	elif action == "Info":
 		current_song_notify(override=True)
+	# end application
 	elif action == "Quit":
 		gtk.main_quit()
 	else:
 		pass
 
+# activates actions from the multimedya keys
 def delegate_mediakeys(*mmkeys):
 	for key in mmkeys:
 		if key == "Play":
@@ -91,6 +126,7 @@ def delegate_mediakeys(*mmkeys):
 		elif key == "Previous":
 			action_handler(None, "Prev")
 
+# setups the mpd client
 def client_setup():
 	global mpdclient
 	try:
@@ -149,6 +185,7 @@ if __name__ == "__main__":
 	menu.append(mn_quit)
 	menu.show_all()
 
+	# assign the menu to the indicator
 	ind.set_menu(menu)
 
 	gtk.main()
