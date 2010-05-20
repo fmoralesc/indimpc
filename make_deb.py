@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from py2deb import Py2deb
 
-version = "0.1.1"
+version = "0.1.3"
 changelog = open("changelog.txt", "r").read()
 
 p = Py2deb("indimpc")
