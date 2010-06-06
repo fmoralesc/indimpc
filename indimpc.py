@@ -23,6 +23,7 @@ class IndiMPDClient():
 	def __init__(self):
 		self.setup_client()
 		self.oldsongdata = ""
+		self.oldstatus = ""
 
 		self.grab_mmkeys()
 		self.notifier = pynotify.init("indimpc")
@@ -101,47 +102,47 @@ class IndiMPDClient():
 			pass
 
 	def status_loop(self):
-		self.update_icon()
+		self.currentstatus = self.mpdclient.status()["state"]
 		self.update_menu()
+		self.update_icon()
 		self.notify_currentsong()
+		self.oldstatus = self.currentstatus
 		return True
 
 	def update_icon(self):
-		currentstatus = self.mpdclient.status()["state"]
-		if currentstatus != self.oldstatus:
-			if currentstatus == "play":
+		if self.currentstatus != self.oldstatus:
+			if self.currentstatus == "play":
 				self.indicator.set_icon("media-playback-start")
-			elif currentstatus == "pause":
+			elif self.currentstatus == "pause":
 				self.indicator.set_icon("media-playback-pause")
-			elif currentstatus == "stop":
+			elif self.currentstatus == "stop":
 				self.indicator.set_icon("media-playback-stop")
-		self.oldstatus = currentstatus
 
 	def update_menu(self):
-		menu = gtk.Menu()
-		if self.mpdclient.status()["state"] in ("stop", "pause"):
-			mn_toggle = gtk.MenuItem("Play")
-		elif self.mpdclient.status()["state"] == "play":
-			mn_toggle = gtk.MenuItem("Pause")
-		mn_prev = gtk.MenuItem("Previous")
-		mn_next = gtk.MenuItem("Next")
-		mn_separator = gtk.SeparatorMenuItem()
-		mn_info = gtk.MenuItem("Song Info")
+		if self.currentstatus != self.oldstatus:
+			menu = gtk.Menu()
+			if self.mpdclient.status()["state"] in ("stop", "pause"):
+				mn_toggle = gtk.MenuItem("Play")
+			elif self.mpdclient.status()["state"] == "play":
+				mn_toggle = gtk.MenuItem("Pause")
+			mn_prev = gtk.MenuItem("Previous")
+			mn_next = gtk.MenuItem("Next")
+			mn_separator = gtk.SeparatorMenuItem()
+			mn_info = gtk.MenuItem("Song Info")
 
-		mn_toggle.connect("activate", self.handle_action, "Toggle")
-		mn_prev.connect("activate", self.handle_action, "Prev")
-		mn_next.connect("activate", self.handle_action, "Next")
-		mn_info.connect("activate", self.handle_action, "Info")
-		
-		menu.append(mn_toggle)
-		menu.append(mn_prev)
-		menu.append(mn_next)
-		menu.append(mn_separator)
-		menu.append(mn_info)
-		menu.show_all()
+			mn_toggle.connect("activate", self.handle_action, "Toggle")
+			mn_prev.connect("activate", self.handle_action, "Prev")
+			mn_next.connect("activate", self.handle_action, "Next")
+			mn_info.connect("activate", self.handle_action, "Info")
+			
+			menu.append(mn_toggle)
+			menu.append(mn_prev)
+			menu.append(mn_next)
+			menu.append(mn_separator)
+			menu.append(mn_info)
+			menu.show_all()
 
-		self.indicator.set_menu(menu)
-
+			self.indicator.set_menu(menu)
 
 	# Looks for album art
 	def get_coverart(self, songdata):
