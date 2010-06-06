@@ -74,6 +74,7 @@ class IndiMPDClient():
 				if self.mpdclient.currentsong() != {}: #if there's a selected song
 					state = self.mpdclient.status()['state']
 					if state == "stop":
+						self.notify()
 						self.mpdclient.play() # play the song from the beginning.
 					elif state in ("play", "pause"):
 						if state == "pause": # we always notify if we recover from pause.
