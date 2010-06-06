@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 from py2deb import Py2deb
 
-version = "0.1.3"
-changelog = open("changelog.txt", "r").read()
+version = "0.2"
 
 p = Py2deb("indimpc")
 p.author = "Felipe Morales"
@@ -16,4 +15,4 @@ p.arch = "all"
 
 p["/usr/bin"] = ["indimpc.py|indimpc"]
 
-p.generate(version, changelog)
+p.generate(version)

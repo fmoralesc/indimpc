@@ -1,5 +1,0 @@
-indimpc (0.1) lucid; urgency=low
-
-	* Initial release
-
-	-- Felipe Morales <hel.sheep@gmail.com> Wed, 19 May 2010 15:02:42 -0400
