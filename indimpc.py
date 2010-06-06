@@ -96,10 +96,8 @@ def action_handler(menu,action):
 					mpdclient.play() # play the song from the beginning.
 				elif state in ("play", "pause"):
 					if state == "pause": # we always notify if we recover from pause.
-						print "from pause"
 						current_song_notify(override=True)
 					mpdclient.pause() # toggle play/pause
-
 			else:
 				mpdclient.play() # we play from the beginning of the playlist
 		else: #there's no playlist
@@ -119,8 +117,8 @@ def action_handler(menu,action):
 	elif action == "Info":
 		current_song_notify(override=True)
 	# end application
-	elif action == "Quit":
-		gtk.main_quit()
+#	elif action == "Quit":
+#		gtk.main_quit()
 	else:
 		pass
 
@@ -155,7 +153,6 @@ if __name__ == "__main__":
 	client_setup()
 	oldsongdata = ""
 
-	
 	#create the app indicator
 	ind = appindicator.Indicator ("indimpc", "sonata", appindicator.CATEGORY_APPLICATION_STATUS)
 	ind.set_status (appindicator.STATUS_ACTIVE)
@@ -180,20 +177,20 @@ if __name__ == "__main__":
 	mn_prev.connect("activate", action_handler, "Prev")
 	mn_next = gtk.MenuItem("Next")
 	mn_next.connect("activate", action_handler, "Next")
-	mn_separator2 = gtk.SeparatorMenuItem()
+	mn_separator1 = gtk.SeparatorMenuItem()
 	mn_info = gtk.MenuItem("Song Info")
 	mn_info.connect("activate", action_handler, "Info")
-	mn_separator1 = gtk.SeparatorMenuItem()
-	mn_quit = gtk.MenuItem("Quit")
-	mn_quit.connect("activate", action_handler, "Quit")
+#	mn_separator2 = gtk.SeparatorMenuItem()
+#	mn_quit = gtk.MenuItem("Quit")
+#	mn_quit.connect("activate", action_handler, "Quit")
 
 	menu.append(mn_toggle)
 	menu.append(mn_prev)
 	menu.append(mn_next)
 	menu.append(mn_separator1)
 	menu.append(mn_info)
-	menu.append(mn_separator2)
-	menu.append(mn_quit)
+#	menu.append(mn_separator2)
+#	menu.append(mn_quit)
 	menu.show_all()
 
 	# assign the menu to the indicator
