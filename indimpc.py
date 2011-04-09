@@ -97,8 +97,7 @@ class IndiMPDClient():
 				return songdata["title"].split(" - ")[1]
 			else:
 				return songdata["title"]
-		else: # there's no data
-			return songdata["file"] # we return the file path
+		return songdata["file"] # we return the file path
 
 	# Returns song artist
 	def get_artist(self, songdata):
@@ -107,8 +106,7 @@ class IndiMPDClient():
 				return songdata["title"].split(" - ")[0]
 		elif songdata.has_key("artist"):
 			return songdata["artist"]
-		else: #there's no data
-			return ""
+		return ""
 
 	def status_loop(self):
 		self.currentstatus = self.mpdclient.status()["state"]
@@ -124,6 +122,7 @@ class IndiMPDClient():
 			if currentsongdata != self.oldsongdata:
 				self.ntitle = self.get_title(currentsongdata)
 				self.nartist = self.get_artist(currentsongdata)
+				print self.nartist
 			if currentsongdata != self.oldsongdata or self.currentstatus != self.oldstatus:
 				self.notify()
 		
