@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python2
 
 import gobject
 import gtk
@@ -6,31 +6,25 @@ import socket, errno, sys, os.path
 import dbus, dbus.mainloop.glib
 
 try:
-	import appindicator
-except:
-	sys.stderr.write("[FATAL] indimpc: please install python-appindicator")
-	sys.exit()
-try:
 	import pynotify
 except:
-	sys.stderr.write("[FATAL] indimpc: please install python-pynotify")
+	sys.stderr.write("[FATAL] indimpc: please install python-pynotify\n")
 try:
 	from mpd import MPDClient
 except:
-	sys.stderr.write("[FATAL] indimpc: please install python-mpd")
+	sys.stderr.write("[FATAL] indimpc: please install python-mpd\n")
 
 class IndiMPDClient():
 	def __init__(self):
 		self.setup_client()
-		self.oldsongdata = ""
 		self.oldstatus = ""
+		self.oldsongdata = ""
+
+		pynotify.init("MPD")
+		self.notification = pynotify.Notification("indiMPC started")
+		gobject.timeout_add(500, self.status_loop)
 
 		self.grab_mmkeys()
-		self.notifier = pynotify.init("indimpc")
-		
-		self.indicator = appindicator.Indicator ("indimpc", "media-playback-start", appindicator.CATEGORY_APPLICATION_STATUS)
-		self.indicator.set_status(appindicator.STATUS_ACTIVE)
-		gobject.timeout_add(500, self.status_loop)
 	
 	def setup_client(self):
 		try:
@@ -74,18 +68,16 @@ class IndiMPDClient():
 				if self.mpdclient.currentsong() != {}: #if there's a selected song
 					state = self.mpdclient.status()['state']
 					if state == "stop":
-						self.notify()
 						self.mpdclient.play() # play the song from the beginning.
 					elif state in ("play", "pause"):
-						if state == "pause": # we always notify if we recover from pause.
-							self.notify()
 						self.mpdclient.pause() # toggle play/pause
 				else:
 					self.mpdclient.play() # we play from the beginning of the playlist
 			else: #there's no playlist
-				no_music_notify = pynotify.Notification("Hey, there's nothing to play", 
-				"Add some music to your MPD playlist, silly!", None)
-				no_music_notify.show()
+				self.notification.set_property("summary", "Hey!")
+				self.notification.set_property("body", "Add some music to your MPD playlist first, silly!")
+				self.notification.set_property("icon-name", "dialog-warning")
+				self.notification.show()
 		# stop (only multimedia keys)
 		elif action == "Stop":
 			self.mpdclient.stop()
@@ -95,69 +87,6 @@ class IndiMPDClient():
 		# previous song
 		elif action == "Prev":
 			self.mpdclient.previous()
-		# notify of current song, overriding
-		elif action == "Info":
-			self.notify()
-		# end application
-		else:
-			pass
-
-	def status_loop(self):
-		self.currentstatus = self.mpdclient.status()["state"]
-		self.update_menu()
-		self.update_icon()
-		self.notify_currentsong()
-		self.oldstatus = self.currentstatus
-		return True
-
-	def update_icon(self):
-		if self.currentstatus != self.oldstatus:
-			if self.currentstatus == "play":
-				self.indicator.set_icon("media-playback-start")
-			elif self.currentstatus == "pause":
-				self.indicator.set_icon("media-playback-pause")
-			elif self.currentstatus == "stop":
-				self.indicator.set_icon("media-playback-stop")
-
-	def update_menu(self):
-		if self.currentstatus != self.oldstatus:
-			menu = gtk.Menu()
-			if self.mpdclient.status()["state"] in ("stop", "pause"):
-				mn_toggle = gtk.MenuItem("Play")
-			elif self.mpdclient.status()["state"] == "play":
-				mn_toggle = gtk.MenuItem("Pause")
-			mn_prev = gtk.MenuItem("Previous")
-			mn_next = gtk.MenuItem("Next")
-			mn_separator = gtk.SeparatorMenuItem()
-			mn_info = gtk.MenuItem("Song Info")
-
-			mn_toggle.connect("activate", self.handle_action, "Toggle")
-			mn_prev.connect("activate", self.handle_action, "Prev")
-			mn_next.connect("activate", self.handle_action, "Next")
-			mn_info.connect("activate", self.handle_action, "Info")
-			
-			menu.append(mn_toggle)
-			menu.append(mn_prev)
-			menu.append(mn_next)
-			menu.append(mn_separator)
-			menu.append(mn_info)
-			menu.show_all()
-
-			self.indicator.set_menu(menu)
-
-	# Looks for album art
-	def get_coverart(self, songdata):
-		# we look in the song folder first
-		song_dirname = "/var/lib/mpd/music/" + os.path.dirname(songdata["file"]) + "/"
-		if os.path.exists(song_dirname + "cover.jpg"):
-			return song_dirname + "cover.jpg"
-		elif os.path.exists(song_dirname + "album.jpg"):
-			return song_dirname + "album.jpg"
-		# we can take advantage of sonata's cover database in ~/.covers
-		if songdata.has_key("album"):
-			if os.path.exists(os.path.expanduser("~/.covers/" + self.get_artist(songdata) + "-" + songdata["album"] + ".jpg")):
-				return os.path.expanduser("~/.covers/" + self.get_artist(songdata) + "-" + songdata["album"] + ".jpg")
-		return "media-playback-start" #default
 
 	# Returns song title
 	def get_title(self, songdata):
@@ -181,27 +110,38 @@ class IndiMPDClient():
 		else: #there's no data
 			return ""
 
-	def notify(self):
-		current_song_notification = pynotify.Notification(self.ctitle, self.cartist, self.ccover)
-		current_song_notification.show()
-
-	def notify_currentsong(self):
+	def status_loop(self):
+		self.currentstatus = self.mpdclient.status()["state"]
+		if self.currentstatus != self.oldstatus:
+			if self.currentstatus == "play":
+				self.nstatus = "media-playback-start"
+			elif self.currentstatus == "pause":
+				self.nstatus = "media-playback-pause"
+			elif self.currentstatus == "stop":
+				self.nstatus = "media-playback-stop"
 		currentsongdata = self.mpdclient.currentsong()
-
 		if currentsongdata != {}:
 			if currentsongdata != self.oldsongdata:
-				self.ctitle = self.get_title(currentsongdata)
-				self.cartist = self.get_artist(currentsongdata)
-				self.ccover = self.get_coverart(currentsongdata)
+				self.ntitle = self.get_title(currentsongdata)
+				self.nartist = self.get_artist(currentsongdata)
+			if currentsongdata != self.oldsongdata or self.currentstatus != self.oldstatus:
+				self.notify()
+		
+		self.oldsongdata = currentsongdata
+		self.oldstatus = self.currentstatus
+		return True
 
-				if self.oldsongdata == "":
-					self.notify()
-				else:
-					self.notify()
+	def notify(self):
+		self.notification.set_property("summary", self.ntitle)
+		self.notification.set_property("body", "-  " + self.nartist)
+		self.notification.set_property("icon-name", self.nstatus)
+		self.notification.set_hint("urgency", "low")
+		self.notification.show()
 
-				self.oldsongdata = currentsongdata
-	
+	def close(self):
+		self.notification.close()
 
 if __name__ == "__main__":
 	indimpc = IndiMPDClient()
+	gtk.quit_add(0, indimpc.close)
 	gtk.main()
