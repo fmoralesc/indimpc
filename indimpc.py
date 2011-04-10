@@ -122,7 +122,6 @@ class IndiMPDClient():
 			if currentsongdata != self.oldsongdata:
 				self.ntitle = self.get_title(currentsongdata)
 				self.nartist = self.get_artist(currentsongdata)
-				print self.nartist
 			if currentsongdata != self.oldsongdata or self.currentstatus != self.oldstatus:
 				self.notify()
 		
