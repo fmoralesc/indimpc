@@ -81,7 +81,7 @@ class IndiMPDClient():
 				self.notification.show()
 		# stop (only multimedia keys)
 		elif action == "Stop":
-			self.mpdclient.stop()
+			self.stop()
 		# next song
 		elif action == "Next":
 			self.play_next()
@@ -140,6 +140,7 @@ class IndiMPDClient():
 			self.notification.add_action("media-playback-pause", "Toggle", self.toggle_playback)
 		elif self.currentstatus == "pause":
 			self.notification.add_action("media-playback-start", "Toggle", self.toggle_playback)
+		self.notification.add_action("media-playback-stop", "Stop", self.stop)
 		self.notification.add_action("media-skip-forward", "Next", self.play_next)
 		self.notification.show()
 
@@ -154,6 +155,9 @@ class IndiMPDClient():
 
 	def toggle_playback(self, *args):
 		self.mpdclient.pause()
+	
+	def stop(self, *args):
+		self.mpdclient.stop()
 
 if __name__ == "__main__":
 	indimpc = IndiMPDClient()
