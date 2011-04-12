@@ -22,6 +22,7 @@ class IndiMPDClient():
 
 		pynotify.init("indimpc")
 		self.notification = pynotify.Notification("indiMPC started")
+		self.notification.set_hint("action-icons", True)
 		gobject.timeout_add(500, self.status_loop)
 
 		self.grab_mmkeys()
@@ -131,12 +132,15 @@ class IndiMPDClient():
 
 	def notify(self):
 		self.notification.set_property("summary", self.ntitle)
-		self.notification.set_property("body", self.nartist)
+		self.notification.set_property("body", "by <i>" + self.nartist + "</i>")
 		self.notification.set_property("icon-name", self.nstatus)
 		self.notification.clear_actions()
-		self.notification.add_action("prev", "Previous", self.play_previous)
-		self.notification.add_action("toggle", "Toggle", self.toggle_playback)
-		self.notification.add_action("next", "Next", self.play_next)
+		self.notification.add_action("media-skip-backward", "Previous", self.play_previous)
+		if self.currentstatus == "play":
+			self.notification.add_action("media-playback-pause", "Toggle", self.toggle_playback)
+		elif self.currentstatus == "pause":
+			self.notification.add_action("media-playback-start", "Toggle", self.toggle_playback)
+		self.notification.add_action("media-skip-forward", "Next", self.play_next)
 		self.notification.show()
 
 	def close(self):
