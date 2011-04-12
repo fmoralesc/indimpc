@@ -20,7 +20,7 @@ class IndiMPDClient():
 		self.oldstatus = ""
 		self.oldsongdata = ""
 
-		pynotify.init("MPD")
+		pynotify.init("indimpc")
 		self.notification = pynotify.Notification("indiMPC started")
 		gobject.timeout_add(500, self.status_loop)
 
@@ -83,10 +83,10 @@ class IndiMPDClient():
 			self.mpdclient.stop()
 		# next song
 		elif action == "Next":
-			self.mpdclient.next()
+			self.play_next()
 		# previous song
 		elif action == "Prev":
-			self.mpdclient.previous()
+			self.play_previous()
 
 	# Returns song title
 	def get_title(self, songdata):
@@ -131,13 +131,25 @@ class IndiMPDClient():
 
 	def notify(self):
 		self.notification.set_property("summary", self.ntitle)
-		self.notification.set_property("body", "-  " + self.nartist)
+		self.notification.set_property("body", self.nartist)
 		self.notification.set_property("icon-name", self.nstatus)
-		self.notification.set_hint("urgency", "low")
+		self.notification.clear_actions()
+		self.notification.add_action("prev", "Previous", self.play_previous)
+		self.notification.add_action("toggle", "Toggle", self.toggle_playback)
+		self.notification.add_action("next", "Next", self.play_next)
 		self.notification.show()
 
 	def close(self):
 		self.notification.close()
+
+	def play_next(self, *args):
+		self.mpdclient.next()
+
+	def play_previous(self, *args):
+		self.mpdclient.previous()
+
+	def toggle_playback(self, *args):
+		self.mpdclient.pause()
 
 if __name__ == "__main__":
 	indimpc = IndiMPDClient()
