@@ -110,24 +110,24 @@ class IndiMPDClient():
 		return ""
 
 	def status_loop(self):
-		self.currentstatus = self.mpdclient.status()["state"]
-		if self.currentstatus != self.oldstatus:
-			if self.currentstatus == "play":
+		currentstatus = self.mpdclient.status()["state"]
+		if currentstatus != self.oldstatus:
+			if currentstatus == "play":
 				self.nstatus = "media-playback-start"
-			elif self.currentstatus == "pause":
+			elif currentstatus == "pause":
 				self.nstatus = "media-playback-pause"
-			elif self.currentstatus == "stop":
+			elif currentstatus == "stop":
 				self.nstatus = "media-playback-stop"
 		currentsongdata = self.mpdclient.currentsong()
 		if currentsongdata != {}:
 			if currentsongdata != self.oldsongdata:
 				self.ntitle = self.get_title(currentsongdata)
 				self.nartist = self.get_artist(currentsongdata)
-			if currentsongdata != self.oldsongdata or self.currentstatus != self.oldstatus:
+			if currentsongdata != self.oldsongdata or currentstatus != self.oldstatus:
 				self.notify()
 		
 		self.oldsongdata = currentsongdata
-		self.oldstatus = self.currentstatus
+		self.oldstatus = currentstatus
 		return True
 
 	def notify(self):
@@ -136,10 +136,13 @@ class IndiMPDClient():
 		self.notification.set_property("icon-name", self.nstatus)
 		self.notification.clear_actions()
 		self.notification.add_action("media-skip-backward", "Previous", self.play_previous)
-		if self.currentstatus == "play":
+		currentstatus = self.mpdclient.status()["state"]
+		if currentstatus == "play":
 			self.notification.add_action("media-playback-pause", "Toggle", self.toggle_playback)
-		elif self.currentstatus == "pause":
+		elif currentstatus == "pause":
 			self.notification.add_action("media-playback-start", "Toggle", self.toggle_playback)
+		elif currentstatus == "stop":
+			self.notification.add_action("media-playback-start", "Play", self.start_playing)
 		self.notification.add_action("media-playback-stop", "Stop", self.stop)
 		self.notification.add_action("media-skip-forward", "Next", self.play_next)
 		self.notification.show()
@@ -156,6 +159,9 @@ class IndiMPDClient():
 	def toggle_playback(self, *args):
 		self.mpdclient.pause()
 	
+	def start_playing(self, *args):
+		self.mpdclient.play()
+
 	def stop(self, *args):
 		self.mpdclient.stop()
 
