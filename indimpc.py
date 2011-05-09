@@ -1,9 +1,13 @@
 #!/usr/bin/python2
 
+# the name of the client and the command for it
+CLIENT = ["ncmpc++", "gnome-terminal -e ncmpcpp"]
+
 import gobject
 import gtk
 import socket, errno, sys, os.path
 import dbus, dbus.mainloop.glib
+import subprocess
 
 try:
 	import pynotify
@@ -131,10 +135,12 @@ class IndiMPDClient():
 		return True
 
 	def notify(self):
+		global CLIENT
 		self.notification.set_property("summary", self.ntitle)
 		self.notification.set_property("body", "by <i>" + self.nartist + "</i>")
 		self.notification.set_property("icon-name", self.nstatus)
 		self.notification.clear_actions()
+		self.notification.add_action(CLIENT[0], CLIENT[0], self.launch_player)
 		self.notification.add_action("media-skip-backward", "Previous", self.play_previous)
 		currentstatus = self.mpdclient.status()["state"]
 		if currentstatus == "play":
@@ -152,18 +158,28 @@ class IndiMPDClient():
 
 	def play_next(self, *args):
 		self.mpdclient.next()
+		self.notify()
 
 	def play_previous(self, *args):
 		self.mpdclient.previous()
+		self.notify()
 
 	def toggle_playback(self, *args):
 		self.mpdclient.pause()
+		self.notify()
 	
 	def start_playing(self, *args):
 		self.mpdclient.play()
+		self.notify()
 
 	def stop(self, *args):
 		self.mpdclient.stop()
+		self.notify()
+
+	def launch_player(self, *args):
+		global CLIENT
+		pargs = CLIENT[1].split()
+		os.spawnvp(os.P_NOWAIT, pargs[0], pargs)
 
 if __name__ == "__main__":
 	indimpc = IndiMPDClient()
