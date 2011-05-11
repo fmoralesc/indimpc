@@ -1,0 +1,15 @@
+*** dbusiface.py	2010-06-23 13:00:46.000000000 -0400
+--- /usr/lib/guake/dbusiface.py	2011-05-11 16:46:20.716291156 -0400
+***************
+*** 38,43 ****
+--- 38,47 ----
+      @dbus.service.method(DBUS_NAME)
+      def show_hide(self):
+          self.guake.show_hide()
++     
++     @dbus.service.method(DBUS_NAME)
++     def show_forced(self):
++         self.guake.show()
+  
+      @dbus.service.method(DBUS_NAME, in_signature='s')
+      def add_tab(self, directory=''):

@@ -1,13 +1,12 @@
 #!/usr/bin/python2
 
 # the name of the client and the command for it
-CLIENT = ["ncmpc++", "gnome-terminal -e ncmpcpp"]
+CLIENT = { "name": "ncmpc++", "command": "ncmpcpp", "guake": True}
 
 import gobject
 import gtk
 import socket, errno, sys, os.path
 import dbus, dbus.mainloop.glib
-import subprocess
 
 try:
 	import pynotify
@@ -20,6 +19,7 @@ except:
 
 class IndiMPDClient():
 	def __init__(self):
+		self.setup_dbus()
 		self.setup_client()
 		self.oldstatus = ""
 		self.oldsongdata = ""
@@ -30,6 +30,10 @@ class IndiMPDClient():
 		gobject.timeout_add(500, self.status_loop)
 
 		self.grab_mmkeys()
+
+	def setup_dbus(self):
+		dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+		self.bus = dbus.Bus(dbus.Bus.TYPE_SESSION)
 	
 	def setup_client(self):
 		try:
@@ -48,9 +52,7 @@ class IndiMPDClient():
 				self.setup_client()
 	
 	def grab_mmkeys(self):
-		dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-		bus = dbus.Bus(dbus.Bus.TYPE_SESSION)
-		keysbus = bus.get_object("org.gnome.SettingsDaemon", "/org/gnome/SettingsDaemon/MediaKeys")
+		keysbus = self.bus.get_object("org.gnome.SettingsDaemon", "/org/gnome/SettingsDaemon/MediaKeys")
 		keysbus.GrabMediaPlayerKeys("indimpc", 0, dbus_interface="org.gnome.SettingsDaemon.MediaKeys")
 		keysbus.connect_to_signal("MediaPlayerKeyPressed", self.delegate_mediakeys)
 
@@ -140,7 +142,7 @@ class IndiMPDClient():
 		self.notification.set_property("body", "by <i>" + self.nartist + "</i>")
 		self.notification.set_property("icon-name", self.nstatus)
 		self.notification.clear_actions()
-		self.notification.add_action(CLIENT[0], CLIENT[0], self.launch_player)
+		self.notification.add_action(CLIENT["name"], CLIENT["name"], self.launch_player)
 		self.notification.add_action("media-skip-backward", "Previous", self.play_previous)
 		currentstatus = self.mpdclient.status()["state"]
 		if currentstatus == "play":
@@ -178,8 +180,14 @@ class IndiMPDClient():
 
 	def launch_player(self, *args):
 		global CLIENT
-		pargs = CLIENT[1].split()
-		os.spawnvp(os.P_NOWAIT, pargs[0], pargs)
+		if CLIENT["guake"] == False:
+			pargs = CLIENT["command"].split()
+			os.spawnvp(os.P_NOWAIT, pargs[0], pargs)
+		elif CLIENT["guake"] == True:
+			guake = self.bus.get_object('org.guake.RemoteControl', '/org/guake/RemoteControl')
+			guake.execute_command("q\n" + CLIENT["command"], dbus_interface="org.guake.RemoteControl")
+			guake.show_forced(dbus_interface="org.guake.RemoteControl")
+			self.notify()
 
 if __name__ == "__main__":
 	indimpc = IndiMPDClient()

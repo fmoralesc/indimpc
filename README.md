@@ -12,5 +12,9 @@ It depends on:
  + python-notify
  + python-mpd
 
+## Notes
+
+indimpc has recently included some support for guake commands. For it to work, you mast patch /usr/lib/guake/dbusiface.py with the guake.patch file provided.
+
 Felipe Morales, Fri, 9 Apr 2011 00:03:00 -0400
 (hel.sheep@gmail.com)
