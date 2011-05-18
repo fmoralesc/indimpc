@@ -84,6 +84,8 @@ class IndiMPDClient():
 				self.notification.set_property("summary", "Hey!")
 				self.notification.set_property("body", "Add some music to your MPD playlist first, silly!")
 				self.notification.set_property("icon-name", "dialog-warning")
+				self.notification.clear_actions()
+				self.notification.add_action(CLIENT["name"], CLIENT["name"], self.launch_player)
 				self.notification.show()
 		# stop (only multimedia keys)
 		elif action == "Stop":
