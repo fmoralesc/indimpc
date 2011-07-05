@@ -1,7 +1,7 @@
 #!/usr/bin/python2
 
-# the name of the client and the command for it
-CLIENT = { "name": "ncmpc++", "command": "ncmpcpp", "guake": True}
+# the name of the client, the command for it, and how to run it ("mode"). if mode is "standalone", launch directly; if "guake", launch within guake; anythin else will asume the mode is a terminal emulator.
+CLIENT = { "name": "ncmpc++", "command": "ncmpcpp", "mode": "gnome-terminal"}
 
 import gobject
 import gtk
@@ -169,7 +169,10 @@ class IndiMPDClient():
 		self.notify()
 
 	def toggle_playback(self, *args):
-		self.mpdclient.pause()
+		if self.mpdclient.status()["state"] == "pause":
+			self.mpdclient.play()
+		else:
+			self.mpdclient.pause()
 		self.notify()
 	
 	def start_playing(self, *args):
@@ -182,14 +185,19 @@ class IndiMPDClient():
 
 	def launch_player(self, *args):
 		global CLIENT
-		if CLIENT["guake"] == False:
+		if CLIENT["mode"] == "guake":
+			# we will control guake via DBus
+			guake = self.bus.get_object('org.guake.RemoteControl', '/org/guake/RemoteControl')
+			guake.execute_command("q\n" + CLIENT["command"], dbus_interface="org.guake.RemoteControl") # "q\n" is a hack so ncmpcpp will quit if it's already running in the terminal (we can't do better with the guake DBus API)
+			guake.show_forced(dbus_interface="org.guake.RemoteControl") # this depends on our patch for guake
+			self.notify()
+		if CLIENT["mode"] == "standalone":
 			pargs = CLIENT["command"].split()
 			os.spawnvp(os.P_NOWAIT, pargs[0], pargs)
-		elif CLIENT["guake"] == True:
-			guake = self.bus.get_object('org.guake.RemoteControl', '/org/guake/RemoteControl')
-			guake.execute_command("q\n" + CLIENT["command"], dbus_interface="org.guake.RemoteControl")
-			guake.show_forced(dbus_interface="org.guake.RemoteControl")
-			self.notify()
+		else: # we will assume we are running a terminal client; the mode is the terminal emulator we will use
+			pargs = [CLIENT["mode"], "-e"] # gnome-terminal, xterm and uxterm work with -e
+			pargs.extend(CLIENT["command"].split())
+			os.spawnvp(os.P_NOWAIT, pargs[0], pargs)
 
 if __name__ == "__main__":
 	indimpc = IndiMPDClient()
