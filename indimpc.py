@@ -17,7 +17,13 @@ try:
 except:
 	sys.stderr.write("[FATAL] indimpc: please install python-mpd\n")
 
-class IndiMPDClient():
+class IndiMPCPreferences(gtk.Window):
+	def __init__(self):
+		gtk.Window.__init__(self)
+		self.set_type_hint(gtk.gdk.WINDOW_TYPE_HINT_DIALOG)
+		self.set_title("indimpc preferences")
+
+class IndiMPDClient(object):
 	def __init__(self):
 		self.setup_dbus()
 		self.setup_client()
@@ -28,6 +34,8 @@ class IndiMPDClient():
 		self.notification = pynotify.Notification("indiMPC started")
 		self.notification.set_hint("action-icons", True)
 		gobject.timeout_add(500, self.status_loop)
+
+		self.indimpc_prefs = IndiMPCPreferences()
 
 		self.grab_mmkeys()
 
@@ -145,6 +153,7 @@ class IndiMPDClient():
 		self.notification.set_property("icon-name", self.nstatus)
 		self.notification.clear_actions()
 		self.notification.add_action(CLIENT["name"], CLIENT["name"], self.launch_player)
+		self.notification.add_action("gtk-preferences", "Preferences", self.open_preferences)
 		self.notification.add_action("media-skip-backward", "Previous", self.play_previous)
 		currentstatus = self.mpdclient.status()["state"]
 		if currentstatus == "play":
@@ -183,6 +192,10 @@ class IndiMPDClient():
 		self.mpdclient.stop()
 		self.notify()
 
+	def open_preferences(self, *args):
+		self.indimpc_prefs.show()
+		self.notify()
+
 	def launch_player(self, *args):
 		global CLIENT
 		if CLIENT["mode"] == "guake":
@@ -190,7 +203,6 @@ class IndiMPDClient():
 			guake = self.bus.get_object('org.guake.RemoteControl', '/org/guake/RemoteControl')
 			guake.execute_command("q\n" + CLIENT["command"], dbus_interface="org.guake.RemoteControl") # "q\n" is a hack so ncmpcpp will quit if it's already running in the terminal (we can't do better with the guake DBus API)
 			guake.show_forced(dbus_interface="org.guake.RemoteControl") # this depends on our patch for guake
-			self.notify()
 		if CLIENT["mode"] == "standalone":
 			pargs = CLIENT["command"].split()
 			os.spawnvp(os.P_NOWAIT, pargs[0], pargs)
@@ -198,6 +210,7 @@ class IndiMPDClient():
 			pargs = [CLIENT["mode"], "-e"] # gnome-terminal, xterm and uxterm work with -e
 			pargs.extend(CLIENT["command"].split())
 			os.spawnvp(os.P_NOWAIT, pargs[0], pargs)
+		self.notify()
 
 if __name__ == "__main__":
 	indimpc = IndiMPDClient()
