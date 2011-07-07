@@ -17,45 +17,42 @@ except:
 	sys.stderr.write("[FATAL] indimpc: please install python-mpd\n")
 
 class IndiMPCConfiguration(object):
-	def __init__(self, configpath=None):
-		if configpath and os.path.isfile(os.path.expanduser(configpath)):
-			self.config_path = os.path.expanduser(configpath)
-		elif os.path.isfile(os.path.expanduser("~/.config/indimpc/indimpc.rc")):
-			self.config_path = os.path.expanduser("~/.config/indimpc/indimpc.rc")
-		else:
-			self.config_path = None
+	def __init__(self, custom_config_path=None):
+		xdg_config_dir = os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))
+		xdg_config_path = os.path.join(xdg_config_dir, 'indimpc/indimpc.rc')
+		if custom_config_path:
+			self.config_path = custom_config_path
+		elif os.path.isfile(xdg_config_path):
+			self.config_path = xdg_config_path
 
-		if self.config_path == None:
-			try:
-				data = os.environ["MPD_HOST"].split("@")
-				if len(data) == 1:
-					self.mpd_host = os.environ["MPD_HOST"]
-					self.mpd_password = ""
-				elif len(data) == 2:
-					self.mpd_password, self.mpd_host = os.environ["MPD_HOST"].split("@")
-				else:
-					raise Exception("malformed $MPD_HOST env-variable")
-			except:
-				self.mpd_host = "localhost"
-				self.mpd_password = ""
-			try:
-				self.mpd_port = int(os.environ["MPD_PORT"])
-			except:
-				self.mpd_port = 6600
-			self.client_name = "ncmpc++"
-			self.client_mode = "gnome-terminal"
-			self.client_command  = "ncmpcpp"
-			self.config_path = os.path.expanduser("~/.config/indimpc/indimpc.rc")
+		self.config_parser = configparser()
+		if self.config_path:
+			self.config_parser.read(self.config_path)
 		else:
-			self.config_parser = configparser()
-			with open(self.config_path, "r") as configfile:
-				self.config_parser.readfp(configfile)
+			self.config_path = xdg_config_path
+
+		if self.config_parser.has_section("MPD"):
 			self.mpd_host = self.config_parser.get("MPD", "host")
 			self.mpd_port = self.config_parser.getint("MPD", "port")
 			self.mpd_password = self.config_parser.get("MPD", "password")
+		else:
+			env_host = os.environ.get("MPD_HOST", "localhost")
+			if "@" in env_host:
+				self.mpd_password, self.mpd_host = env_host.split("@", 1)
+			else:
+				self.mpd_password, self.mpd_host = None, env_host
+
+			env_port = os.environ.get("MPD_PORT", 6600)
+			self.mpd_port = int(env_port)
+
+		if self.config_parser.has_section("Client"):
 			self.client_name = self.config_parser.get("Client", "name")
 			self.client_mode = self.config_parser.get("Client", "mode")
 			self.client_command = self.config_parser.get("Client", "command")
+		else:
+			self.client_name = "ncmpc++"
+			self.client_mode = "gnome-terminal"
+			self.client_command = "ncmpcpp"
 	 
 	def set(self, section, key, value):
 		def is_exe(path):
