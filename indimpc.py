@@ -103,7 +103,6 @@ class IndiMPCPreferencesDialog(gtk.Window):
 		self.add(prefs_vbox)
 		
 		server_prefs_frame = gtk.Frame("MPD")
-		server_prefs_frame.set_shadow_type(gtk.SHADOW_NONE)
 		server_prefs = gtk.VBox()
 		server_prefs.set_border_width(4)
 		server_prefs_frame.add(server_prefs)
@@ -126,9 +125,19 @@ class IndiMPCPreferencesDialog(gtk.Window):
 		self.port_spin.set_value(self.config.mpd_port)
 		port_hbox.pack_end(self.port_spin, expand=False, fill=False)
 		server_prefs.add(port_hbox)
+		password_hbox = gtk.HBox()
+		password_label_align = gtk.Alignment(xalign=0.0, yalign=0.5)
+		password_label = gtk.Label("Password:")
+		password_label_align.add(password_label)
+		password_hbox.pack_start(password_label_align)
+		self.password_entry = gtk.Entry()
+		self.password_entry.set_visibility(False)
+		self.password_entry.connect("button-press-event", self.toggle_password)
+		self.password_entry.set_text(self.config.mpd_password)
+		password_hbox.pack_end(self.password_entry, expand=False,fill=False)
+		server_prefs.add(password_hbox)
 		
 		client_prefs_frame = gtk.Frame("Client")
-		client_prefs_frame.set_shadow_type(gtk.SHADOW_NONE)
 		client_prefs = gtk.VBox()
 		client_prefs.set_border_width(4)
 		client_prefs_frame.add(client_prefs)
@@ -173,9 +182,17 @@ class IndiMPCPreferencesDialog(gtk.Window):
 		if key == "Escape":
 			self.write_config()
 
+	def toggle_password(self, entry, event):
+		if event.type == gtk.gdk._2BUTTON_PRESS:
+			if self.password_entry.get_visibility() == False:
+				self.password_entry.set_visibility(True)
+			else:
+				self.password_entry.set_visibility(False)
+
 	def write_config(self, *args):
 		self.config.set("MPD", "host", self.host_entry.get_text())
 		self.config.set("MPD", "port", int(self.port_spin.get_value()))
+		self.config.set("MPD", "password", int(self.password_entry.get_text())
 		self.config.set("Client", "name", self.name_entry.get_text())
 		self.config.set("Client", "mode", self.mode_entry.get_model()[self.mode_entry.get_active()][0])
 		self.config.set("Client", "command", self.command_entry.get_text())
