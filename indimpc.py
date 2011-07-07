@@ -16,17 +16,82 @@ try:
 except:
 	sys.stderr.write("[FATAL] indimpc: please install python-mpd\n")
 
-class IndiMPCPreferences(gtk.Window):
+class IndiMPCConfiguration(object):
+	def __init__(self, configpath=None):
+		if configpath and os.path.isfile(os.path.expanduser(configpath)):
+			self.config_path = os.path.expanduser(configpath)
+		elif os.path.isfile(os.path.expanduser("~/.config/indimpc/indimpc.rc")):
+			self.config_path = os.path.expanduser("~/.config/indimpc/indimpc.rc")
+		else:
+			self.config_path = None
+
+		if self.config_path == None:
+			try:
+				data = os.environ["MPD_HOST"].split("@")
+				if len(data) == 1:
+					self.mpd_host = os.environ["MPD_HOST"]
+					self.mpd_password = ""
+				elif len(data) == 2:
+					self.mpd_password, self.mpd_host = os.environ["MPD_HOST"].split("@")
+				else:
+					raise Exception("malformed $MPD_HOST env-variable")
+			except:
+				self.mpd_host = "localhost"
+				self.mpd_password = ""
+			try:
+				self.mpd_port = int(os.environ["MPD_PORT"])
+			except:
+				self.mpd_port = 6600
+			self.client_name = "ncmpc++"
+			self.client_mode = "gnome-terminal"
+			self.client_command  = "ncmpcpp"
+			self.config_path = os.path.expanduser("~/.config/indimpc/indimpc.rc")
+		else:
+			self.config_parser = configparser()
+			with open(self.config_path, "r") as configfile:
+				self.config_parser.readfp(configfile)
+			self.mpd_host = self.config_parser.get("MPD", "host")
+			self.mpd_port = self.config_parser.getint("MPD", "port")
+			self.mpd_password = self.config_parser.get("MPD", "password")
+			self.client_name = self.config_parser.get("Client", "name")
+			self.client_mode = self.config_parser.get("Client", "mode")
+			self.client_command = self.config_parser.get("Client", "command")
+	 
+	def set(self, section, key, value):
+		def is_exe(path):
+			return os.path.exists(path) and os.access(path, os.X_OK)
+		
+		def is_proper_executable_path(program):
+			fpath, fname = os.path.split(program)
+			if fpath:
+				if is_exe(program):
+					return True
+			else:
+				for path in os.environ["PATH"].split(os.pathsep):
+					exe_file = os.path.join(path, program)
+					if is_exe(exe_file):
+						return True
+			return False
+		
+		if (section, key) == ("Client", "command") and not is_proper_executable_path(value):
+			# we have an invalid command, so we simply return
+			return
+		else:
+			self.config_parser.set(section, key, value)
+			self.__dict__["_".join((section.lower(), key.lower()))] = value # we update self.property this way
+	
+	def write(self):
+		if self.config_path:
+			with open(self.config_path, "w") as configfile:
+				self.config_parser.write(configfile)
+	
+class IndiMPCPreferencesDialog(gtk.Window):
 	def __init__(self):
-		self.configfile = os.path.expanduser("~/.config/indimpc/indimpc.rc")
+		self.config = IndiMPCConfiguration()
 
 		gtk.Window.__init__(self)
 		self.connect("key-press-event", self.keyboard_handler)
 		self.connect("destroy", self.write_config)
-
-		self.config = configparser()
-		with open(self.configfile, "r") as configfile:
-			self.config.readfp(configfile)
 
 		self.set_type_hint(gtk.gdk.WINDOW_TYPE_HINT_DIALOG)
 		self.set_position(gtk.WIN_POS_CENTER)
@@ -38,6 +103,7 @@ class IndiMPCPreferences(gtk.Window):
 		self.add(prefs_vbox)
 		
 		server_prefs_frame = gtk.Frame("MPD")
+		server_prefs_frame.set_shadow_type(gtk.SHADOW_NONE)
 		server_prefs = gtk.VBox()
 		server_prefs.set_border_width(4)
 		server_prefs_frame.add(server_prefs)
@@ -48,8 +114,7 @@ class IndiMPCPreferences(gtk.Window):
 		host_label_align.add(host_label)
 		host_hbox.pack_start(host_label_align)
 		self.host_entry = gtk.Entry()
-		self.host_entry.set_text(self.config.get("MPD", "host"))
-		self.host_entry.connect("activate", self.change_host)
+		self.host_entry.set_text(self.config.mpd_host)
 		host_hbox.pack_end(self.host_entry, expand=False,fill=False)
 		server_prefs.add(host_hbox)
 		port_hbox = gtk.HBox()
@@ -58,12 +123,12 @@ class IndiMPCPreferences(gtk.Window):
 		port_label_align.add(port_label)
 		port_hbox.pack_start(port_label_align)
 		self.port_spin = gtk.SpinButton(gtk.Adjustment(lower=1.0, upper=64000.0, step_incr=100.0))
-		self.port_spin.set_value(self.config.getint("MPD", "port"))
-		self.port_spin.connect("value-changed", self.change_port)
+		self.port_spin.set_value(self.config.mpd_port)
 		port_hbox.pack_end(self.port_spin, expand=False, fill=False)
 		server_prefs.add(port_hbox)
 		
 		client_prefs_frame = gtk.Frame("Client")
+		client_prefs_frame.set_shadow_type(gtk.SHADOW_NONE)
 		client_prefs = gtk.VBox()
 		client_prefs.set_border_width(4)
 		client_prefs_frame.add(client_prefs)
@@ -73,8 +138,7 @@ class IndiMPCPreferences(gtk.Window):
 		name_label_align.add(name_label)
 		name_hbox.pack_start(name_label_align)
 		self.name_entry = gtk.Entry()
-		self.name_entry.set_text(self.config.get("Client", "name"))
-		self.name_entry.connect("activate", self.set_client_name)
+		self.name_entry.set_text(self.config.client_name)
 		name_hbox.add(self.name_entry)
 		client_prefs.pack_start(name_hbox, expand=False,fill=False)
 		mode_hbox = gtk.HBox()
@@ -86,10 +150,9 @@ class IndiMPCPreferences(gtk.Window):
 		self.mode_entry.insert_text(0, "standalone")
 		self.mode_entry.insert_text(0, "guake")
 		self.mode_entry.insert_text(0, "gnome-terminal")
-		if self.config.get("Client", "mode") not in ("standalone", "guake", "gnome-terminal"):
-			self.mode_entry.insert_text(0, self.config.get("Client", "mode"))
+		if self.config.client_mode not in ("standalone", "guake", "gnome-terminal"):
+			self.mode_entry.insert_text(0, self.config.client_mode)
 		self.mode_entry.set_active(0)
-		self.mode_entry.connect("changed", self.set_client_mode)
 		mode_hbox.add(self.mode_entry)
 		client_prefs.pack_start(mode_hbox, expand=False,fill=False)
 		command_hbox = gtk.HBox()
@@ -98,76 +161,31 @@ class IndiMPCPreferences(gtk.Window):
 		command_label_align.add(command_label)
 		command_hbox.pack_start(command_label_align)
 		self.command_entry = gtk.Entry()
-		self.command_entry.set_text(self.config.get("Client", "command"))
-		self.command_entry.connect("activate", self.set_client_command)
+		self.command_entry.set_text(self.config.client_command)
 		command_hbox.add(self.command_entry)
 		client_prefs.pack_start(command_hbox, expand=False,fill=False)
 		prefs_vbox.add(client_prefs_frame)
 		prefs_vbox.show_all()
-
 		self.show()
 
 	def keyboard_handler(self, event, data=None):
 		key = gtk.gdk.keyval_name(data.keyval)
-
 		if key == "Escape":
 			self.write_config()
 
-	def change_host(self, entry):
-		new_host = entry.get_text()
-		# TODO: check if new_host is a proper address
-		self.config.set("MPD", "host", new_host)
-
-	def change_port(self, spin):
-		self.config.set("MPD", "port", str(int(spin.get_value())))
-
-	def set_client_name(self, entry):
-		self.config.set("Client", "name", entry.get_text())
-
-	def set_client_mode(self, comboentry):
-		self.config.set("Client", "mode", comboentry.get_model()[comboentry.get_active()][0])
-	
-	def _is_exe(self,fpath):
-		return os.path.exists(fpath) and os.access(fpath, os.X_OK)
-	
-	def _is_a_proper_executable(self, program):
-		fpath, fname = os.path.split(program)
-		if fpath:
-			if self._is_exe(program):
-				return True
-		else:
-			for path in os.environ["PATH"].split(os.pathsep):
-				exe_file = os.path.join(path, program)
-				if self._is_exe(exe_file):
-					return True
-		return False
-
-	def set_client_command(self, entry):
-		new_command = entry.get_text()
-		if self._is_a_proper_executable(new_command):
-			self.config.set("Client", "command", entry.get_text())
-
 	def write_config(self, *args):
-		self.change_host(self.host_entry)
-		self.change_port(self.port_spin)
-		self.set_client_name(self.name_entry)
-		self.set_client_mode(self.mode_entry)
-		self.set_client_command(self.command_entry)
-		with open(self.configfile, "w") as configfile:
-			self.config.write(configfile)
+		self.config.set("MPD", "host", self.host_entry.get_text())
+		self.config.set("MPD", "port", int(self.port_spin.get_value()))
+		self.config.set("Client", "name", self.name_entry.get_text())
+		self.config.set("Client", "mode", self.mode_entry.get_model()[self.mode_entry.get_active()][0])
+		self.config.set("Client", "command", self.command_entry.get_text())
+		self.config.write()
 		Popen(["indimpc"])
 		gtk.main_quit()
 
 class IndiMPDClient(object):
 	def __init__(self):
-		self.configfile = os.path.expanduser("~/.config/indimpc/indimpc.rc")
-		self.config = configparser()
-		with open(self.configfile, "r") as configfile:
-			self.config.readfp(configfile)
-		# the name of the client, the command for it, and how to run it ("mode"). if mode is "standalone", launch directly; if "guake", launch within guake; anythin else will asume the mode is a terminal emulator.
-		self.client = {"name": self.config.get("Client", "name"),
-				"mode": self.config.get("Client", "mode"),
-				"command": self.config.get("Client", "command")}
+		self.config = IndiMPCConfiguration()
 	
 		self.setup_dbus()
 		self.setup_client()
@@ -189,7 +207,9 @@ class IndiMPDClient(object):
 		global MPD
 		try:
 			self.mpdclient = MPDClient()
-			self.mpdclient.connect(self.config.get("MPD", "host"), int(self.config.get("MPD", "port")))
+			self.mpdclient.connect(self.config.mpd_host, self.config.mpd_port)
+			if self.config.mpd_password not in ("", None):
+				self.mpdclient.password(self.config.mpd_password)
 			self.oldstatus = self.mpdclient.status()["state"]
 		except socket.error, e:
 			sys.stderr.write("[FATAL] indimpc: can't connect to mpd. please check if it's running corectly")
@@ -236,7 +256,7 @@ class IndiMPDClient(object):
 				self.notification.set_property("body", "Add some music to your MPD playlist first, silly!")
 				self.notification.set_property("icon-name", "dialog-warning")
 				self.notification.clear_actions()
-				self.notification.add_action(self.client["name"], self.client["name"], self.launch_player)
+				self.notification.add_action(self.config.client_name, self.config.client_name, self.launch_player)
 				self.notification.show()
 		# stop (only multimedia keys)
 		elif action == "Stop":
@@ -294,7 +314,7 @@ class IndiMPDClient(object):
 		self.notification.set_property("body", "by <i>" + self.nartist + "</i>")
 		self.notification.set_property("icon-name", self.nstatus)
 		self.notification.clear_actions()
-		self.notification.add_action(self.client["name"], self.client["name"], self.launch_player)
+		self.notification.add_action(self.config.client_name, self.config.client_name, self.launch_player)
 		self.notification.add_action("P", "P", self.open_preferences)
 		self.notification.add_action("media-skip-backward", "Previous", self.play_previous)
 		currentstatus = self.mpdclient.status()["state"]
@@ -335,21 +355,21 @@ class IndiMPDClient(object):
 		self.notify()
 
 	def open_preferences(self, *args):
-		IndiMPCPreferences()
+		IndiMPCPreferencesDialog()
 		self.notify()
 
 	def launch_player(self, *args):
-		if self.client["mode"] == "guake":
+		if self.config.client_mode == "guake":
 			# we will control guake via DBus
 			guake = self.bus.get_object('org.guake.RemoteControl', '/org/guake/RemoteControl')
-			guake.execute_command("q\n" + self.client["command"], dbus_interface="org.guake.RemoteControl") # "q\n" is a hack so ncmpcpp will quit if it's already running in the terminal (we can't do better with the guake DBus API)
+			guake.execute_command("q\n" + self.config.client_command, dbus_interface="org.guake.RemoteControl") # "q\n" is a hack so ncmpcpp will quit if it's already running in the terminal (we can't do better with the guake DBus API)
 			guake.show_forced(dbus_interface="org.guake.RemoteControl") # this depends on our patch for guake
-		elif self.client["mode"] == "standalone":
-			pargs = self.client["command"].split()
+		elif self.config.client_mode == "standalone":
+			pargs = self.config.client_command.split()
 			Popen(pargs)
 		else: # we will assume we are running a terminal client; the mode is the terminal emulator we will use
-			pargs = [self.client["mode"], "-e"] # gnome-terminal, xterm and uxterm work with -e
-			pargs.extend(self.client["command"].split())
+			pargs = [self.config.client_mode, "-e"] # gnome-terminal, xterm and uxterm work with -e
+			pargs.extend(self.config.client_command.split())
 			Popen(pargs)
 		self.notify()
 

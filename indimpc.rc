@@ -1,6 +1,7 @@
 [MPD]
 host = localhost
 port = 6600
+password = 
 
 [Client]
 mode = guake
