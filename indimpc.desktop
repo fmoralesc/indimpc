@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=indimpc
+Comment=minimal mpd client for gnome-shell
+Icon=gnome-multimedia
+Exec=indimpc
+Terminal=false
+Type=Application
+OnlyShowIn=GNOME;XFCE;
+X-GNOME-Autostart-enabled=true
