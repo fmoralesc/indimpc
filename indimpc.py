@@ -192,7 +192,7 @@ class IndiMPCPreferencesDialog(gtk.Window):
 	def write_config(self, *args):
 		self.config.set("MPD", "host", self.host_entry.get_text())
 		self.config.set("MPD", "port", int(self.port_spin.get_value()))
-		self.config.set("MPD", "password", int(self.password_entry.get_text())
+		self.config.set("MPD", "password", self.password_entry.get_text())
 		self.config.set("Client", "name", self.name_entry.get_text())
 		self.config.set("Client", "mode", self.mode_entry.get_model()[self.mode_entry.get_active()][0])
 		self.config.set("Client", "command", self.command_entry.get_text())
