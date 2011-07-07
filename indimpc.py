@@ -17,13 +17,13 @@ except:
 	sys.stderr.write("[FATAL] indimpc: please install python-mpd\n")
 
 class IndiMPCConfiguration(object):
-	def __init__(self, configpath=None):
-		if configpath:
-			self.config_path = os.path.expanduser(configpath)
-		elif os.path.isfile(os.path.expanduser("~/.config/indimpc/indimpc.rc")):
-			self.config_path = os.path.expanduser("~/.config/indimpc/indimpc.rc")
-		else:
-			self.config_path = None
+	def __init__(self, custom_config_path=None):
+		xdg_config_dir = os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))
+		xdg_config_path = os.path.join(xdg_config_dir, 'indimpc/indimpc.rc')
+		if custom_config_path:
+			self.config_path = custom_config_path
+		elif os.path.isfile(xdg_config_path):
+			self.config_path = xdg_config_path
 
 		if self.config_path == None:
 			try:
