@@ -18,7 +18,7 @@ except:
 
 class IndiMPCConfiguration(object):
 	def __init__(self, configpath=None):
-		if configpath and os.path.isfile(os.path.expanduser(configpath)):
+		if configpath:
 			self.config_path = os.path.expanduser(configpath)
 		elif os.path.isfile(os.path.expanduser("~/.config/indimpc/indimpc.rc")):
 			self.config_path = os.path.expanduser("~/.config/indimpc/indimpc.rc")
