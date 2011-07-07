@@ -1,8 +1,7 @@
 indimpc
 =======
 
-![indimpc](http://farm6.static.flickr.com/5028/5602255976_aa4a8d7ca0_z.jpg)
-![indimpc2](http://farm6.static.flickr.com/5147/5602255818_4820d31e56_z.jpg)
+![indimpc](http://k.min.us/ibpk6S.png)
 
 This is a minimalistic MPD client with support for the gnome-shell indication system and multimedia keys via dbus.
 
@@ -13,6 +12,8 @@ It depends on:
  + python-mpd
 
 ## Notes
+
+You must install the indimpc.rc file included in ~/.config/indimpc/
 
 indimpc has recently included some support for guake commands. For it to work, you mast patch /usr/lib/guake/dbusiface.py with the guake.patch file provided.
 

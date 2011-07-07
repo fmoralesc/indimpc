@@ -1,0 +1,9 @@
+[MPD]
+host = localhost
+port = 6600
+
+[Client]
+mode = guake
+name = ncmpc++
+command = ncmpcpp
+
