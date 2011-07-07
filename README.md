@@ -1,7 +1,7 @@
 indimpc
 =======
 
-![indimpc](http://k.min.us/ibpk6S.png)
+[screenshots](http://min.us/mcMTiaX)
 
 This is a minimalistic MPD client with support for the gnome-shell indication system and multimedia keys via dbus.
 
