@@ -2,7 +2,7 @@
 
 import gobject
 import gtk
-import socket, errno, sys, os.path
+import socket, errno, sys, os.path, os
 import dbus, dbus.mainloop.glib
 from ConfigParser import RawConfigParser as configparser
 from subprocess import Popen
@@ -21,6 +21,7 @@ class IndiMPCPreferences(gtk.Window):
 		self.configfile = os.path.expanduser("~/.config/indimpc/indimpc.rc")
 
 		gtk.Window.__init__(self)
+		self.connect("key-press-event", self.keyboard_handler)
 		self.connect("destroy", self.write_config)
 
 		self.config = configparser()
@@ -46,20 +47,20 @@ class IndiMPCPreferences(gtk.Window):
 		host_label = gtk.Label("Host:")
 		host_label_align.add(host_label)
 		host_hbox.pack_start(host_label_align)
-		host_entry = gtk.Entry()
-		host_entry.set_text(self.config.get("MPD", "host"))
-		host_entry.connect("activate", self.change_host)
-		host_hbox.pack_end(host_entry, expand=False,fill=False)
+		self.host_entry = gtk.Entry()
+		self.host_entry.set_text(self.config.get("MPD", "host"))
+		self.host_entry.connect("activate", self.change_host)
+		host_hbox.pack_end(self.host_entry, expand=False,fill=False)
 		server_prefs.add(host_hbox)
 		port_hbox = gtk.HBox()
 		port_label_align = gtk.Alignment(xalign=0.0, yalign=0.5)
 		port_label = gtk.Label("Port:")
 		port_label_align.add(port_label)
 		port_hbox.pack_start(port_label_align)
-		port_spin = gtk.SpinButton(gtk.Adjustment(lower=1.0, upper=64000.0, step_incr=100.0))
-		port_spin.set_value(self.config.getint("MPD", "port"))
-		port_spin.connect("value-changed", self.change_port)
-		port_hbox.pack_end(port_spin, expand=False, fill=False)
+		self.port_spin = gtk.SpinButton(gtk.Adjustment(lower=1.0, upper=64000.0, step_incr=100.0))
+		self.port_spin.set_value(self.config.getint("MPD", "port"))
+		self.port_spin.connect("value-changed", self.change_port)
+		port_hbox.pack_end(self.port_spin, expand=False, fill=False)
 		server_prefs.add(port_hbox)
 		
 		client_prefs_frame = gtk.Frame("Client")
@@ -71,42 +72,51 @@ class IndiMPCPreferences(gtk.Window):
 		name_label = gtk.Label("Name:")
 		name_label_align.add(name_label)
 		name_hbox.pack_start(name_label_align)
-		name_entry = gtk.Entry()
-		name_entry.set_text(self.config.get("Client", "name"))
-		name_entry.connect("activate", self.set_client_name)
-		name_hbox.add(name_entry)
+		self.name_entry = gtk.Entry()
+		self.name_entry.set_text(self.config.get("Client", "name"))
+		self.name_entry.connect("activate", self.set_client_name)
+		name_hbox.add(self.name_entry)
 		client_prefs.pack_start(name_hbox, expand=False,fill=False)
 		mode_hbox = gtk.HBox()
 		mode_label_align = gtk.Alignment(xalign=0.0, yalign=0.5)
 		mode_label = gtk.Label("Mode:")
 		mode_label_align.add(mode_label)
 		mode_hbox.pack_start(mode_label_align)
-		mode_entry = gtk.combo_box_entry_new_text()
-		mode_entry.insert_text(0, "standalone")
-		mode_entry.insert_text(0, "guake")
-		if self.config.get("Client", "mode") not in ("standalone", "guake"):
-			mode_entry.insert_text(0, self.config.get("Client", "mode"))
-		mode_entry.set_active(0)
-		mode_entry.connect("changed", self.set_client_mode)
-		mode_hbox.add(mode_entry)
+		self.mode_entry = gtk.combo_box_entry_new_text()
+		self.mode_entry.insert_text(0, "standalone")
+		self.mode_entry.insert_text(0, "guake")
+		self.mode_entry.insert_text(0, "gnome-terminal")
+		if self.config.get("Client", "mode") not in ("standalone", "guake", "gnome-terminal"):
+			self.mode_entry.insert_text(0, self.config.get("Client", "mode"))
+		self.mode_entry.set_active(0)
+		self.mode_entry.connect("changed", self.set_client_mode)
+		mode_hbox.add(self.mode_entry)
 		client_prefs.pack_start(mode_hbox, expand=False,fill=False)
 		command_hbox = gtk.HBox()
 		command_label_align = gtk.Alignment(xalign=0.0, yalign=0.5)
 		command_label = gtk.Label("Command:")
 		command_label_align.add(command_label)
 		command_hbox.pack_start(command_label_align)
-		command_entry = gtk.Entry()
-		command_entry.set_text(self.config.get("Client", "command"))
-		command_entry.connect("activate", self.set_client_command)
-		command_hbox.add(command_entry)
+		self.command_entry = gtk.Entry()
+		self.command_entry.set_text(self.config.get("Client", "command"))
+		self.command_entry.connect("activate", self.set_client_command)
+		command_hbox.add(self.command_entry)
 		client_prefs.pack_start(command_hbox, expand=False,fill=False)
 		prefs_vbox.add(client_prefs_frame)
 		prefs_vbox.show_all()
 
 		self.show()
 
+	def keyboard_handler(self, event, data=None):
+		key = gtk.gdk.keyval_name(data.keyval)
+
+		if key == "Escape":
+			self.write_config()
+
 	def change_host(self, entry):
-		self.config.set("MPD", "host", entry.get_text())
+		new_host = entry.get_text()
+		# TODO: check if new_host is a proper address
+		self.config.set("MPD", "host", new_host)
 
 	def change_port(self, spin):
 		self.config.set("MPD", "port", str(int(spin.get_value())))
@@ -117,10 +127,32 @@ class IndiMPCPreferences(gtk.Window):
 	def set_client_mode(self, comboentry):
 		self.config.set("Client", "mode", comboentry.get_model()[comboentry.get_active()][0])
 	
+	def _is_exe(self,fpath):
+		return os.path.exists(fpath) and os.access(fpath, os.X_OK)
+	
+	def _is_a_proper_executable(self, program):
+		fpath, fname = os.path.split(program)
+		if fpath:
+			if self._is_exe(program):
+				return True
+		else:
+			for path in os.environ["PATH"].split(os.pathsep):
+				exe_file = os.path.join(path, program)
+				if self._is_exe(exe_file):
+					return True
+		return False
+
 	def set_client_command(self, entry):
-		self.config.set("Client", "command", entry.get_text())
+		new_command = entry.get_text()
+		if self._is_a_proper_executable(new_command):
+			self.config.set("Client", "command", entry.get_text())
 
 	def write_config(self, *args):
+		self.change_host(self.host_entry)
+		self.change_port(self.port_spin)
+		self.set_client_name(self.name_entry)
+		self.set_client_mode(self.mode_entry)
+		self.set_client_command(self.command_entry)
 		with open(self.configfile, "w") as configfile:
 			self.config.write(configfile)
 		Popen(["indimpc"])
