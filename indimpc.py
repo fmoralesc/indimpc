@@ -237,9 +237,12 @@ class IndiMPDClient(object):
 				self.setup_client()
 	
 	def grab_mmkeys(self):
-		keysbus = self.bus.get_object("org.gnome.SettingsDaemon", "/org/gnome/SettingsDaemon/MediaKeys")
-		keysbus.GrabMediaPlayerKeys("indimpc", 0, dbus_interface="org.gnome.SettingsDaemon.MediaKeys")
-		keysbus.connect_to_signal("MediaPlayerKeyPressed", self.delegate_mediakeys)
+		try:
+			keysbus = self.bus.get_object("org.gnome.SettingsDaemon", "/org/gnome/SettingsDaemon/MediaKeys")
+			keysbus.GrabMediaPlayerKeys("indimpc", 0, dbus_interface="org.gnome.SettingsDaemon.MediaKeys")
+			keysbus.connect_to_signal("MediaPlayerKeyPressed", self.delegate_mediakeys)
+		except:
+			print "[WARNING] indimpc: can't grab multimedia keys using gnome-settings-daemon."
 
 	def delegate_mediakeys(self, *mmkeys):
 		for key in mmkeys:
