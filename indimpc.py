@@ -407,6 +407,9 @@ class IndiMPDClient(object):
 		self.notify()
 
 if __name__ == "__main__":
-	indimpc = IndiMPDClient()
-	gtk.quit_add(0, indimpc.close)
+	if "-p" in sys.argv:
+		IndiMPCPreferencesDialog()
+	else:
+		indimpc = IndiMPDClient()
+		gtk.quit_add(0, indimpc.close)
 	gtk.main()
