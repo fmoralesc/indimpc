@@ -259,6 +259,14 @@ class IndiMPDClient(object):
 			keysbus.connect_to_signal("MediaPlayerKeyPressed", self.delegate_mediakeys)
 		except:
 			print "[WARNING] indimpc: can't grab multimedia keys using gnome-settings-daemon."
+			try:
+				import keybinder
+				keybinder.bind("XF86AudioPlay", self.toggle_playback)
+				keybinder.bind("XF86AudioStop", self.stop)
+				keybinder.bind("XF86AudioPrev", self.play_previous)
+				keybinder.bind("Xf86AudioNext", self.play_next)
+			except:
+				print "[WARNING] indimpc: can't grab multimedia keys using keybinder either."
 
 	def delegate_mediakeys(self, *mmkeys):
 		for key in mmkeys:
