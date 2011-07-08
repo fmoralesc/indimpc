@@ -1,10 +1,13 @@
+[General]
+grab_keys = True
+
 [MPD]
 host = localhost
 port = 6600
 password = 
 
 [Client]
-mode = guake
+mode = gnome-terminal
 name = ncmpc++
 command = ncmpcpp
 

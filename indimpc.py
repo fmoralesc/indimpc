@@ -31,6 +31,11 @@ class IndiMPCConfiguration(object):
 		else:
 			self.config_path = xdg_config_path
 
+		if self.config_parser.has_section("General"):
+			self.general_grab_keys = self.config_parser.getboolean("General", "grab_keys")
+		else:
+			self.general_grab_keys = True
+		
 		if self.config_parser.has_section("MPD"):
 			self.mpd_host = self.config_parser.get("MPD", "host")
 			self.mpd_port = self.config_parser.getint("MPD", "port")
@@ -98,6 +103,15 @@ class IndiMPCPreferencesDialog(gtk.Window):
 
 		prefs_vbox = gtk.VBox()
 		self.add(prefs_vbox)
+
+		general_prefs_frame = gtk.Frame("General")
+		general_prefs = gtk.VBox()
+		general_prefs.set_border_width(4)
+		self.grab_mmkeys_check = gtk.CheckButton("Grab multimedia keys")
+		self.grab_mmkeys_check.set_active(self.config.general_grab_keys)
+		general_prefs.add(self.grab_mmkeys_check)
+		general_prefs_frame.add(general_prefs)
+		prefs_vbox.add(general_prefs_frame)
 		
 		server_prefs_frame = gtk.Frame("MPD")
 		server_prefs = gtk.VBox()
@@ -187,6 +201,7 @@ class IndiMPCPreferencesDialog(gtk.Window):
 				self.password_entry.set_visibility(False)
 
 	def write_config(self, *args):
+		self.config.set("General", "grab_keys", self.grab_mmkeys_check.get_active())
 		self.config.set("MPD", "host", self.host_entry.get_text())
 		self.config.set("MPD", "port", int(self.port_spin.get_value()))
 		self.config.set("MPD", "password", self.password_entry.get_text())
@@ -211,7 +226,8 @@ class IndiMPDClient(object):
 		self.notification.set_hint("action-icons", True)
 		gobject.timeout_add(500, self.status_loop)
 
-		self.grab_mmkeys()
+		if self.config.general_grab_keys:
+			self.grab_mmkeys()
 
 	def setup_dbus(self):
 		dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
