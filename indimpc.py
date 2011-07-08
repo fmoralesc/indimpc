@@ -348,7 +348,7 @@ class IndiMPDClient(object):
 		self.notification.set_property("icon-name", self.nstatus)
 		self.notification.clear_actions()
 		self.notification.add_action(self.config.client_name, self.config.client_name, self.launch_player)
-		self.notification.add_action("P", "P", self.open_preferences)
+		self.notification.add_action("system-run", "P", self.open_preferences)
 		self.notification.add_action("media-skip-backward", "Previous", self.play_previous)
 		currentstatus = self.mpdclient.status()["state"]
 		if currentstatus == "play":
