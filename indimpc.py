@@ -379,7 +379,7 @@ class IndiMPDClient(object):
 		return True
 
 	def notify(self):
-		if "body" in pynotify.get_server_caps()
+		if "body" in pynotify.get_server_caps():
 			self.notification.set_property("summary", self.ntitle)
 			if "body-markup" in pynotify.get_server_caps():
 				self.notification.set_property("body", "by <i>" + self.nartist + "</i>")
