@@ -416,10 +416,7 @@ class IndiMPDClient(object):
 		self.notify()
 
 	def toggle_playback(self, *args):
-		if self.mpdclient.status()["state"] == "pause":
-			self.mpdclient.play()
-		else:
-			self.mpdclient.pause()
+		self.mpdclient.pause()
 		self.notify()
 	
 	def start_playing(self, *args):
