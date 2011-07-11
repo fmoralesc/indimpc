@@ -248,8 +248,9 @@ class IndiMPDClient(object):
 		self.oldsongdata = ""
 
 		pynotify.init("indimpc")
-		self.notification = pynotify.Notification("indiMPC started")
-		self.notification.set_hint("action-icons", True)
+		self.notification = pynotify.Notification("indimpc started")
+		if "action-icons" in pynotify.get_server_caps():
+			self.notification.set_hint("action-icons", True)
 		gobject.timeout_add(500, self.status_loop)
 
 		if self.config.general_grab_keys:
@@ -322,8 +323,9 @@ class IndiMPDClient(object):
 				self.notification.set_property("summary", "Hey!")
 				self.notification.set_property("body", "Add some music to your MPD playlist first, silly!")
 				self.notification.set_property("icon-name", "dialog-warning")
-				self.notification.clear_actions()
-				self.notification.add_action(self.config.client_name, self.config.client_name, self.launch_player)
+				if "actions" in pynotify.get_server_caps():
+					self.notification.clear_actions()
+					self.notification.add_action(self.config.client_name, self.config.client_name, self.launch_player)
 				self.notification.show()
 		# stop (only multimedia keys)
 		elif action == "Stop":
@@ -377,22 +379,29 @@ class IndiMPDClient(object):
 		return True
 
 	def notify(self):
-		self.notification.set_property("summary", self.ntitle)
-		self.notification.set_property("body", "by <i>" + self.nartist + "</i>")
+		if "body" in pynotify.get_server_caps()
+			self.notification.set_property("summary", self.ntitle)
+			if "body-markup" in pynotify.get_server_caps():
+				self.notification.set_property("body", "by <i>" + self.nartist + "</i>")
+			else:
+				self.notification.set_property("body", "by " + self.nartist)
+		else:
+			self.notification.set_property("summary", self.ntitle + " - " + self.nartist)
 		self.notification.set_property("icon-name", self.nstatus)
-		self.notification.clear_actions()
-		self.notification.add_action(self.config.client_name, self.config.client_name, self.launch_player)
-		self.notification.add_action("system-run", "P", self.open_preferences)
-		self.notification.add_action("media-skip-backward", "Previous", self.play_previous)
-		currentstatus = self.mpdclient.status()["state"]
-		if currentstatus == "play":
-			self.notification.add_action("media-playback-pause", "Toggle", self.toggle_playback)
-		elif currentstatus == "pause":
-			self.notification.add_action("media-playback-start", "Toggle", self.toggle_playback)
-		elif currentstatus == "stop":
-			self.notification.add_action("media-playback-start", "Play", self.start_playing)
-		self.notification.add_action("media-playback-stop", "Stop", self.stop)
-		self.notification.add_action("media-skip-forward", "Next", self.play_next)
+		if "actions" in pynotify.get_server_caps():
+			self.notification.clear_actions()
+			self.notification.add_action(self.config.client_name, self.config.client_name, self.launch_player)
+			self.notification.add_action("system-run", "P", self.open_preferences)
+			self.notification.add_action("media-skip-backward", "Previous", self.play_previous)
+			currentstatus = self.mpdclient.status()["state"]
+			if currentstatus == "play":
+				self.notification.add_action("media-playback-pause", "Toggle", self.toggle_playback)
+			elif currentstatus == "pause":
+				self.notification.add_action("media-playback-start", "Toggle", self.toggle_playback)
+			elif currentstatus == "stop":
+				self.notification.add_action("media-playback-start", "Play", self.start_playing)
+			self.notification.add_action("media-playback-stop", "Stop", self.stop)
+			self.notification.add_action("media-skip-forward", "Next", self.play_next)
 		self.notification.show()
 
 	def close(self):
