@@ -24,6 +24,8 @@ class IndiMPCConfiguration(object):
 			self.config_path = custom_config_path
 		elif os.path.isfile(xdg_config_path):
 			self.config_path = xdg_config_path
+		else:
+			self.config_path = xdg_config_path
 
 		self.config_parser = configparser()
 		if self.config_path:
@@ -45,7 +47,7 @@ class IndiMPCConfiguration(object):
 			if "@" in env_host:
 				self.mpd_password, self.mpd_host = env_host.split("@", 1)
 			else:
-				self.mpd_password, self.mpd_host = None, env_host
+				self.mpd_password, self.mpd_host = "", env_host
 
 			env_port = os.environ.get("MPD_PORT", 6600)
 			self.mpd_port = int(env_port)
@@ -74,6 +76,9 @@ class IndiMPCConfiguration(object):
 					if is_exe(exe_file):
 						return True
 			return False
+		
+		if not self.config_parser.has_section(section):
+			self.config_parser.add_section(section)
 		
 		if (section, key) == ("Client", "command") and not is_proper_executable_path(value):
 			# we have an invalid command, so we simply return
@@ -263,7 +268,7 @@ class IndiMPDClient(object):
 				self.mpdclient.password(self.config.mpd_password)
 			self.oldstatus = self.mpdclient.status()["state"]
 		except socket.error, e:
-			sys.stderr.write("[FATAL] indimpc: can't connect to mpd. please check if it's running corectly")
+			sys.stderr.write("[FATAL] indimpc: can't connect to mpd. please check if it's running corectly\n")
 			sys.exit()
 	
 	def setup_if_client_unusable(self):
@@ -279,7 +284,7 @@ class IndiMPDClient(object):
 			keysbus.GrabMediaPlayerKeys("indimpc", 0, dbus_interface="org.gnome.SettingsDaemon.MediaKeys")
 			keysbus.connect_to_signal("MediaPlayerKeyPressed", self.delegate_mediakeys)
 		except:
-			print "[WARNING] indimpc: can't grab multimedia keys using gnome-settings-daemon."
+			sys.stderr.write("[WARNING] indimpc: can't grab multimedia keys using gnome-settings-daemon.\n")
 			try:
 				import keybinder
 				keybinder.bind("XF86AudioPlay", self.toggle_playback)
@@ -287,7 +292,7 @@ class IndiMPDClient(object):
 				keybinder.bind("XF86AudioPrev", self.play_previous)
 				keybinder.bind("Xf86AudioNext", self.play_next)
 			except:
-				print "[WARNING] indimpc: can't grab multimedia keys using keybinder either."
+				sys.stderr.write("[WARNING] indimpc: can't grab multimedia keys using keybinder either.")
 
 	def delegate_mediakeys(self, *mmkeys):
 		for key in mmkeys:
