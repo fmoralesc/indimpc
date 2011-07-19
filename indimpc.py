@@ -272,6 +272,7 @@ class IndiMPDClient(MPDClient):
 		self.connect("player-paused", self.send_notification)
 		self.connect("player-stopped", self.send_notification)
 		self.connect("player-unpaused", self.send_notification)
+		self.connect("playlist-cleared", self.notify_playlist_cleared)
 
 	def setup_if_client_unusable(self):
 		try:
@@ -325,13 +326,7 @@ class IndiMPDClient(MPDClient):
 				else:
 					self.play() # we play from the beginning of the playlist
 			else: #there's no playlist
-				self.notification.set_property("summary", "Hey!")
-				self.notification.set_property("body", "Add some music to your MPD playlist first, silly!")
-				self.notification.set_property("icon-name", "dialog-warning")
-				if "actions" in pynotify.get_server_caps():
-					self.notification.clear_actions()
-					self.notification.add_action(self.config.client_name, self.config.client_name, self.launch_player)
-				self.notification.show()
+				self.notify_playlist_cleared()
 		# stop (only multimedia keys)
 		elif action == "Stop":
 			self.stop_playback()
@@ -350,6 +345,15 @@ class IndiMPDClient(MPDClient):
 			return "media-playback-pause"
 		elif state == "stop":
 			return "media-playback-stop"
+	
+	def notify_playlist_cleared(self, client=None):
+		self.notification.set_property("summary", "Hey!")
+		self.notification.set_property("body", "Add some music to your MPD playlist first, silly!")
+		self.notification.set_property("icon-name", "dialog-warning")
+		if "actions" in pynotify.get_server_caps():
+			self.notification.clear_actions()
+			self.notification.add_action(self.config.client_name, self.config.client_name, self.launch_player)
+		self.notification.show()
 	
 	def send_notification(self, client=None, songdata=None, force=False):
 		if songdata:
