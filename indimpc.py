@@ -12,9 +12,10 @@ try:
 except:
 	sys.stderr.write("[FATAL] indimpc: please install python-pynotify\n")
 try:
-	from mpd import MPDClient
+	from mpdor.client import Client as MPDClient
+	from mpdor.info import SongData
 except:
-	sys.stderr.write("[FATAL] indimpc: please install python-mpd\n")
+	sys.stderr.write("[FATAL] indimpc: please install python-mpdor\n")
 
 class IndiMPCConfiguration(object):
 	def __init__(self, custom_config_path=None):
@@ -95,10 +96,9 @@ class IndiMPCConfiguration(object):
 class IndiMPCPreferencesDialog(gtk.Window):
 	def __init__(self):
 		self.config = IndiMPCConfiguration()
-		self.mpdclient = MPDClient()
-		self.mpdclient.connect(self.config.mpd_host, self.config.mpd_port)
-		if self.config.mpd_password not in (None, ""):
-			self.mpdclient.password(self.config.mpd_password)
+		self.mpdclient = MPDClient(connect_at_init=False, connect_signals=False)
+		self.mpdclient.set_server(self.config.mpd_host, self.config.mpd_port, self.config.mpd_password)
+		self.mpdclient.connect_to_server()
 
 		gtk.Window.__init__(self)
 		self.connect("key-press-event", self.keyboard_handler)
@@ -140,7 +140,7 @@ class IndiMPCPreferencesDialog(gtk.Window):
 		self.grab_mmkeys_check.set_active(self.config.general_grab_keys)
 		general_prefs.pack_start(self.grab_mmkeys_check, fill=False, expand=False)
 		prefs_vbox.append_page(general_prefs, gtk.Label("Desktop/UI"))
-		
+	
 		server_prefs = gtk.VBox()
 		server_prefs.set_border_width(4)
 		server_prefs.set_spacing(2)
@@ -174,7 +174,7 @@ class IndiMPCPreferencesDialog(gtk.Window):
 		self.password_entry.set_text(self.config.mpd_password)
 		password_hbox.pack_end(self.password_entry, expand=False,fill=False)
 		server_prefs.pack_start(password_hbox, expand=False, fill=False)
-		
+	
 		client_prefs = gtk.VBox()
 		client_prefs.set_border_width(4)
 		client_prefs.set_spacing(2)
@@ -238,46 +238,51 @@ class IndiMPCPreferencesDialog(gtk.Window):
 		Popen(["indimpc"])
 		gtk.main_quit()
 
-class IndiMPDClient(object):
+class IndiMPDClient(MPDClient):
 	def __init__(self):
+		MPDClient.__init__(self, connect_at_init=False, connect_signals=False)
 		self.config = IndiMPCConfiguration()
-	
-		self.setup_dbus()
 		self.setup_client()
 		self.oldstatus = ""
 		self.oldsongdata = ""
+		self.connect_signals()
+	
+		self.setup_dbus()
 
 		pynotify.init("indimpc")
 		self.notification = pynotify.Notification("indimpc started")
 		if "action-icons" in pynotify.get_server_caps():
 			self.notification.set_hint("action-icons", True)
-		gobject.timeout_add(500, self.status_loop)
-
+		
 		if self.config.general_grab_keys:
 			self.grab_mmkeys()
 
-	def setup_dbus(self):
-		dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-		self.bus = dbus.Bus(dbus.Bus.TYPE_SESSION)
-	
+		self.send_notification(force=True)
+
 	def setup_client(self):
-		global MPD
 		try:
-			self.mpdclient = MPDClient()
-			self.mpdclient.connect(self.config.mpd_host, self.config.mpd_port)
-			if self.config.mpd_password not in ("", None):
-				self.mpdclient.password(self.config.mpd_password)
-			self.oldstatus = self.mpdclient.status()["state"]
+			self.set_server(self.config.mpd_host, self.config.mpd_port, self.config.mpd_password)
+			self.connect_to_server()
 		except socket.error, e:
 			sys.stderr.write("[FATAL] indimpc: can't connect to mpd. please check if it's running corectly\n")
 			sys.exit()
 	
+	def connect_signals(self):
+		self.connect("player-song-start", self.send_notification)
+		self.connect("player-paused", self.send_notification)
+		self.connect("player-stopped", self.send_notification)
+		self.connect("player-unpaused", self.send_notification)
+
 	def setup_if_client_unusable(self):
 		try:
-			self.mpdclient.status()
+			self.status()
 		except socket.error, e:
 			if e.errno == errno.EPIPE:
 				self.setup_client()
+	
+	def setup_dbus(self):
+		dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+		self.bus = dbus.Bus(dbus.Bus.TYPE_SESSION)
 	
 	def grab_mmkeys(self):
 		try:
@@ -310,15 +315,15 @@ class IndiMPDClient(object):
 		self.setup_if_client_unusable()
 		# toggle playback (silence/noise ;))
 		if action == "Toggle":
-			if self.mpdclient.playlistinfo() != []: #if there's a playlist
-				if self.mpdclient.currentsong() != {}: #if there's a selected song
-					state = self.mpdclient.status()['state']
+			if self.playlistinfo() != []: #if there's a playlist
+				if self.currentsong() != {}: #if there's a selected song
+					state = self.status()['state']
 					if state == "stop":
-						self.mpdclient.play() # play the song from the beginning.
+						self.play() # play the song from the beginning.
 					elif state in ("play", "pause"):
-						self.mpdclient.pause() # toggle play/pause
+						self.pause() # toggle play/pause
 				else:
-					self.mpdclient.play() # we play from the beginning of the playlist
+					self.play() # we play from the beginning of the playlist
 			else: #there's no playlist
 				self.notification.set_property("summary", "Hey!")
 				self.notification.set_property("body", "Add some music to your MPD playlist first, silly!")
@@ -329,7 +334,7 @@ class IndiMPDClient(object):
 				self.notification.show()
 		# stop (only multimedia keys)
 		elif action == "Stop":
-			self.stop()
+			self.stop_playback()
 		# next song
 		elif action == "Next":
 			self.play_next()
@@ -337,70 +342,51 @@ class IndiMPDClient(object):
 		elif action == "Prev":
 			self.play_previous()
 
-	# Returns song title
-	def get_title(self, songdata):
-		if songdata.has_key("title"):
-			if songdata.has_key("name"): # we can assume it's a radio or stream
-				# we split the title from the info we have
-				# for streams, "title" is usually of the form "artist - title"
-				return songdata["title"].split(" - ")[1]
+	def get_state_icon(self):
+		state = self.status()["state"]
+		if state == "play":
+			return "media-playback-start"
+		elif state == "pause":
+			return "media-playback-pause"
+		elif state == "stop":
+			return "media-playback-stop"
+	
+	def send_notification(self, client=None, songdata=None, force=False):
+		if songdata:
+			if "body" in pynotify.get_server_caps():
+				self.notification.set_property("summary", songdata.title)
+				if "body-markup" in pynotify.get_server_caps():
+					self.notification.set_property("body", "by <i>" + songdata.artist + "</i>")
+				else:
+					self.notification.set_property("body", "by " + songdata.artist)
 			else:
-				return songdata["title"]
-		return songdata["file"] # we return the file path
-
-	# Returns song artist
-	def get_artist(self, songdata):
-		if songdata.has_key("name"): # we can assume it's a radio or stream
-			if songdata.has_key("title"): # we grab the artist info from the title
-				return songdata["title"].split(" - ")[0]
-		elif songdata.has_key("artist"):
-			return songdata["artist"]
-		return ""
-
-	def status_loop(self):
-		currentstatus = self.mpdclient.status()["state"]
-		if currentstatus != self.oldstatus:
-			if currentstatus == "play":
-				self.nstatus = "media-playback-start"
-			elif currentstatus == "pause":
-				self.nstatus = "media-playback-pause"
-			elif currentstatus == "stop":
-				self.nstatus = "media-playback-stop"
-		currentsongdata = self.mpdclient.currentsong()
-		if currentsongdata != {}:
-			if currentsongdata != self.oldsongdata:
-				self.ntitle = self.get_title(currentsongdata)
-				self.nartist = self.get_artist(currentsongdata)
-			if currentsongdata != self.oldsongdata or currentstatus != self.oldstatus:
-				self.notify()
-		
-		self.oldsongdata = currentsongdata
-		self.oldstatus = currentstatus
-		return True
-
-	def notify(self):
-		if "body" in pynotify.get_server_caps():
-			self.notification.set_property("summary", self.ntitle)
-			if "body-markup" in pynotify.get_server_caps():
-				self.notification.set_property("body", "by <i>" + self.nartist + "</i>")
-			else:
-				self.notification.set_property("body", "by " + self.nartist)
+				self.notification.set_property("summary", songdata.title + " - " + songdata.artist)
 		else:
-			self.notification.set_property("summary", self.ntitle + " - " + self.nartist)
-		self.notification.set_property("icon-name", self.nstatus)
+			if force:
+				title = SongData(self.currentsong()).title
+				artist = SongData(self.currentsong()).artist
+				if "body" in pynotify.get_server_caps():
+					self.notification.set_property("summary", title)
+					if "body-markup" in pynotify.get_server_caps():
+						self.notification.set_property("body", "by <i>" + artist + "</i>")
+					else:
+						self.notification.set_property("body", "by " + artist)
+				else:
+					self.notification.set_property("summary", title + " - " + artist)
+		self.notification.set_property("icon-name", self.get_state_icon())
 		if "actions" in pynotify.get_server_caps():
 			self.notification.clear_actions()
 			self.notification.add_action(self.config.client_name, self.config.client_name, self.launch_player)
 			self.notification.add_action("system-run", "P", self.open_preferences)
 			self.notification.add_action("media-skip-backward", "Previous", self.play_previous)
-			currentstatus = self.mpdclient.status()["state"]
+			currentstatus = self.status()["state"]
 			if currentstatus == "play":
 				self.notification.add_action("media-playback-pause", "Toggle", self.toggle_playback)
 			elif currentstatus == "pause":
 				self.notification.add_action("media-playback-start", "Toggle", self.toggle_playback)
 			elif currentstatus == "stop":
 				self.notification.add_action("media-playback-start", "Play", self.start_playing)
-			self.notification.add_action("media-playback-stop", "Stop", self.stop)
+			self.notification.add_action("media-playback-stop", "Stop", self.stop_playback)
 			self.notification.add_action("media-skip-forward", "Next", self.play_next)
 		self.notification.show()
 
@@ -408,28 +394,28 @@ class IndiMPDClient(object):
 		self.notification.close()
 
 	def play_next(self, *args):
-		self.mpdclient.next()
-		self.notify()
+		self.next()
+		self.send_notification()
 
 	def play_previous(self, *args):
-		self.mpdclient.previous()
-		self.notify()
+		self.previous()
+		self.send_notification()
 
 	def toggle_playback(self, *args):
-		self.mpdclient.pause()
-		self.notify()
+		self.pause()
+		self.send_notification()
 	
 	def start_playing(self, *args):
-		self.mpdclient.play()
-		self.notify()
+		self.play()
+		self.send_notification()
 
-	def stop(self, *args):
-		self.mpdclient.stop()
-		self.notify()
+	def stop_playback(self, *args):
+		self.stop()
+		self.send_notification()
 
 	def open_preferences(self, *args):
 		IndiMPCPreferencesDialog()
-		self.notify()
+		self.send_notification()
 
 	def launch_player(self, *args):
 		if self.config.client_mode == "guake":
@@ -444,7 +430,7 @@ class IndiMPDClient(object):
 			pargs = [self.config.client_mode, "-e"] # gnome-terminal, xterm and uxterm work with -e
 			pargs.extend(self.config.client_command.split())
 			Popen(pargs)
-		self.notify()
+		self.send_notification()
 
 if __name__ == "__main__":
 	if "-p" in sys.argv:
