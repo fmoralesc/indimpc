@@ -360,30 +360,43 @@ class IndiMPDClient(MPDClient):
 			if "body" in pynotify.get_server_caps():
 				self.notification.set_property("summary", songdata.title)
 				if "body-markup" in pynotify.get_server_caps():
-					self.notification.set_property("body", "by <i>" + songdata.artist + "</i>")
+					try:
+						self.notification.set_property("body", "by <i>" + songdata.artist + "</i>")
+					except:
+						self.notification.set_property("body", "")
 				else:
-					self.notification.set_property("body", "by " + songdata.artist)
+					try:
+						self.notification.set_property("body", "by " + songdata.artist)
+					except:
+						self.notification.set_property("body", "")
 			else:
-				self.notification.set_property("summary", songdata.title + " - " + songdata.artist)
+				try:
+					self.notification.set_property("summary", songdata.title + " - " + songdata.artist)
+				except:
+					self.notification.set_property("summary", songdata.title)
 		else:
 			if force:
-				title = SongData(self.currentsong()).title
-				try:
-					artist = SongData(self.currentsong()).artist
-				except:
-					artist = None
-				if "body" in pynotify.get_server_caps():
-					self.notification.set_property("summary", title)
-					if artist:
-						if "body-markup" in pynotify.get_server_caps():
-							self.notification.set_property("body", "by <i>" + artist + "</i>")
-						else:
-							self.notification.set_property("body", "by " + artist)
-				else:
-					if artist:
-						self.notification.set_property("summary", title + " - " + artist)
-					else:
+				songdata = self.currentsong()
+				if songdata:
+					title = SongData(self.currentsong()).title
+					try:
+						artist = SongData(self.currentsong()).artist
+					except:
+						artist = None
+					if "body" in pynotify.get_server_caps():
 						self.notification.set_property("summary", title)
+						if artist:
+							if "body-markup" in pynotify.get_server_caps():
+								self.notification.set_property("body", "by <i>" + artist + "</i>")
+							else:
+								self.notification.set_property("body", "by " + artist)
+						else:
+							self.set_property("body", "")
+					else:
+						if artist:
+							self.notification.set_property("summary", title + " - " + artist)
+						else:
+							self.notification.set_property("summary", title)
 		self.notification.set_property("icon-name", self.get_state_icon())
 		if "actions" in pynotify.get_server_caps():
 			self.notification.clear_actions()
