@@ -368,15 +368,22 @@ class IndiMPDClient(MPDClient):
 		else:
 			if force:
 				title = SongData(self.currentsong()).title
-				artist = SongData(self.currentsong()).artist
+				try:
+					artist = SongData(self.currentsong()).artist
+				except:
+					artist = None
 				if "body" in pynotify.get_server_caps():
 					self.notification.set_property("summary", title)
-					if "body-markup" in pynotify.get_server_caps():
-						self.notification.set_property("body", "by <i>" + artist + "</i>")
-					else:
-						self.notification.set_property("body", "by " + artist)
+					if artist:
+						if "body-markup" in pynotify.get_server_caps():
+							self.notification.set_property("body", "by <i>" + artist + "</i>")
+						else:
+							self.notification.set_property("body", "by " + artist)
 				else:
-					self.notification.set_property("summary", title + " - " + artist)
+					if artist:
+						self.notification.set_property("summary", title + " - " + artist)
+					else:
+						self.notification.set_property("summary", title)
 		self.notification.set_property("icon-name", self.get_state_icon())
 		if "actions" in pynotify.get_server_caps():
 			self.notification.clear_actions()
