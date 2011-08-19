@@ -391,7 +391,7 @@ class IndiMPDClient(MPDClient):
 							else:
 								self.notification.set_property("body", "by " + artist)
 						else:
-							self.set_property("body", "")
+							self.notification.set_property("body", "")
 					else:
 						if artist:
 							self.notification.set_property("summary", title + " - " + artist)
