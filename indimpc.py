@@ -447,9 +447,14 @@ class IndiMPDClient(object):
 		self.notify()
 
 if __name__ == "__main__":
-	if "-p" in sys.argv:
-		IndiMPCPreferencesDialog()
-	else:
-		indimpc = IndiMPDClient()
-		gtk.quit_add(0, indimpc.close)
+	for args in sys.argv:
+		if args == "-p":
+			IndiMPCPreferencesDialog()
+		elif args == "-s":
+			indimpc = IndiMPDClient()
+			indimpc.status_loop()
+			sys.exit()
+
+	indimpc = IndiMPDClient()
+	gtk.quit_add(0, indimpc.close)
 	gtk.main()
