@@ -1,0 +1,172 @@
+2011-08-29  Thomas Adam <thomas@xteddy.org>
+
+  * indimpc.py: Add command-line option "-s" to display summary  Allow for
+  showing the notification on-demand.  Useful to see the status of MPD without
+  waiting for an MPD-specific event, such as pausing, or a change of song, etc.
+
+2011-07-11  Felipe Morales <hel.sheep@gmail.com>
+
+  * indimpc.py: changing the toggle_playback function
+
+  * indimpc.py: fixing a typo
+
+  * indimpc.py: indimpc should adapt to notification server capabilities
+
+  * indimpc.py: Fixed some errors raised when no config file exists.
+
+  * README.md, indimpc.py: Playback mode can be set from the preferences
+  dialog, which has also been modified.
+
+2011-07-08  Felipe Morales <hel.sheep@gmail.com>
+
+  * README.md: Updated documentation.
+
+  * indimpc.py: Falling back to python-keybinder if gnome-settings-daemon isn't
+  usable for grabbing the multimedia keys.
+
+  * .gitignore, indimpc.py: made the preferences button a bit more appealing.
+  still not correct, though (it should use the "gtk-properties" icon, but it
+  refuses to do so)
+
+  * indimpc.py: The preferences dialog can be opened by passing "-p" as an
+  argument.
+
+  * indimpc.py, indimpc.rc: Multimedia keys grabbing is now a toggleable
+  option.
+
+  * indimpc.py: indimpc won't crash if it can't grab the multimedia keys.
+
+2011-07-08  Mantas Mikulėnas <grawity@nullroute.eu.org>
+
+  * indimpc.py: Better way to deal with missing config options  A user may want
+  to configure [Client], but keep using $MPD_HOST rather than [MPD].
+
+  * indimpc.py: Use $XDG_CONFIG_HOME if set  Most often this will point to
+  ~/.config, but better do it properly anyway.  Also, if a path was given on
+  the command line, it would have already been expanded by shell; no need to do
+  it again.
+
+  * indimpc.py: Don't silently ignore nonexistent custom config file  If user
+  explicitly provided a different configuration, it's better to explicitly
+  notify of failures too.
+
+2011-07-07  Felipe Morales <hel.sheep@gmail.com>
+
+  * indimpc.py: fixing typo in IndiMPDPreferencesDialog.write_config
+
+  * indimpc.py: Adding entry for password in preferences dialog.  Fixing frame
+  style in preferences dialog.
+
+  * indimpc.py, indimpc.rc: Fixing most of issues #2 & #3. Configuration should
+  be gathered from $MPD_HOST and $MPD_PORT, in case
+  ~/.config/indimpc/indimpc.rc doesn't exist. indimpc.rc overrides the
+  environment variables.
+
+2011-07-06  Felipe Morales <hel.sheep@gmail.com>
+
+  * indimpc.desktop, make_deb.py: Cleaning up for distribution.
+
+  * indimpc.py: Preferences should be updated in a smarter way now.
+
+  * README.md: changing the README file
+
+  * README.md, indimpc.rc: Updated documentation.  Added configuration file.
+
+  * indimpc.py: Added functional preferences dialog.
+
+2011-07-04  Felipe Morales <hel.sheep@gmail.com>
+
+  * indimpc.py: starting work on preferences dialog
+
+  * indimpc.py: Generalized client support
+
+2011-05-17  Felipe Morales <hel.sheep@gmail.com>
+
+  * indimpc.py: adding a "open client" action to the notifications when there
+  is nothing in the playlist.
+
+2011-05-11  Felipe Morales <hel.sheep@gmail.com>
+
+  * README.md, guake.patch, indimpc.py: added guake support
+
+2011-05-09  Felipe Morales <hel.sheep@gmail.com>
+
+  * indimpc.py: indimpc can now launch an external player
+
+2011-04-13  Felipe Morales <hel.sheep@gmail.com>
+
+  * indimpc.py: recover rom stop
+
+2011-04-12  Felipe Morales <hel.sheep@gmail.com>
+
+  * indimpc.py: added stop action
+
+  * indimpc.py: adding action icons support
+
+2011-04-11  Felipe Morales <hel.sheep@gmail.com>
+
+  * indimpc.py: adding actions
+
+2011-04-10  Felipe Morales <hel.sheep@gmail.com>
+
+  * indimpc.py: removed print statements
+
+2011-04-09  Felipe Morales <hel.sheep@gmail.com>
+
+  * indimpc.py: Fixed metadata updating for streams
+
+  * make_deb.py: fixing make_deb script
+
+  * README.md, indimpc.py, indimpc.pyc: gnome-shell version
+
+2010-06-06  Felipe Morales <hel.sheep@gmail.com>
+
+  * indimpc.py, indimpc.pyc: Added: Notify from stop
+
+2010-06-05  Felipe Morales <hel.sheep@gmail.com>
+
+  * indimpc.py, make_deb.py: Fixed a minor glitch.
+
+  * changelog.txt, indimpc.py, make_deb.py: changed the estructure of the code
+
+  * indimpc.py: Removed the quit menu entry
+
+2010-05-20  Felipe Morales <hel.sheep@gmail.com>
+
+  * indimpc.py: Fixed a logic bug where when playback recovered from pause, no
+  notification was made
+
+  * indimpc.py, make_deb.py: Tweaked the operation so it has to work less when
+  it won't notify
+
+  * indimpc.py: Fixed: order in notification logic.
+
+  * indimpc.py, make_deb.py: Fixed: notifications logic.
+
+2010-05-19  Felipe Morales <hel.sheep@gmail.com>
+
+  * indimpc.py: Fixed: logic.
+
+  * indimpc.py: Added: comments. + minor changes.
+
+  * .gitignore, changelog.txt, indimpc, indimpc.png, indimpc.py, make_deb.py:
+  Added a script to build a deb package (requires py2deb), and a changelog.
+
+  * indimpc: Added: notify current song on recovery from pause.
+
+2010-05-18  Felipe Morales <hel.sheep@gmail.com>
+
+  * indimpc: Some changes in the menu layout and labels
+
+  * indimpc: Fixed the behaviour and added an "Info" menu item.
+
+  * indimpc, indimpc.png: + fixed behaviour for radio streams + tweaked error
+  messages + changed current_song_notify update time + added a icon.
+
+2010-05-17  Felipe Morales <hel.sheep@gmail.com>
+
+  * indimpc: Fixed some problems with the notifications.
+
+  * README.md: added some color to the README
+
+  * README.md, indimpc: Initial release
