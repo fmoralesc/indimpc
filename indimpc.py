@@ -304,8 +304,8 @@ class IndiMPDClient(object):
             except ImportError | KeyError:
                 sys.stderr.write("[WARNING] indimpc: can't grab multimedia keys using keybinder either.")
 
-    def delegate_mediakeys(self, *mmkeys):
-        for key in mmkeys:
+    def delegate_mediakeys(self, recipient, key):
+        if recipient == "indimpc":
             if key == "Play":
                 self.handle_action(None, "Toggle")
             elif key == "Stop":
