@@ -301,7 +301,7 @@ class IndiMPDClient(object):
                 keybinder.bind("XF86AudioStop", self.stop)
                 keybinder.bind("XF86AudioPrev", self.play_previous)
                 keybinder.bind("Xf86AudioNext", self.play_next)
-            except ImportError | KeyError:
+            except:
                 sys.stderr.write("[WARNING] indimpc: can't grab multimedia keys using keybinder either.")
 
     def delegate_mediakeys(self, recipient, key):
@@ -339,10 +339,10 @@ class IndiMPDClient(object):
         # stop (only multimedia keys)
         elif action == "Stop":
             self.stop()
-            # next song
+        # next song
         elif action == "Next":
             self.play_next()
-            # previous song
+        # previous song
         elif action == "Prev":
             self.play_previous()
 
