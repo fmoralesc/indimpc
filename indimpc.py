@@ -386,11 +386,11 @@ class IndiMPDClient(object):
         if "body" in pynotify.get_server_caps():
             self.notification.set_property("summary", self.ntitle)
             if "body-markup" in pynotify.get_server_caps():
-                self.notification.set_property("body", "by <i>" + self.nartist + "</i>")
+                self.notification.set_property("body", "by <i>" + ", ".join(str(x) for x in self.nartist) + "</i>")
             else:
-                self.notification.set_property("body", "by " + self.nartist)
+                self.notification.set_property("body", "by " + ", ".join(str(x) for x in self.nartist))
         else:
-            self.notification.set_property("summary", self.ntitle + " - " + self.nartist)
+            self.notification.set_property("summary", self.ntitle + " - " + ", ".join(str(x) for x in self.nartist))
         self.notification.set_property("icon-name", self.nstatus)
         if "actions" in pynotify.get_server_caps():
             self.notification.clear_actions()
