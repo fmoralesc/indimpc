@@ -51,10 +51,12 @@ class IndiMPCConfiguration(object):
             self.mpd_port = int(env_port)
 
         if self.config_parser.has_section("Client"):
+            self.client_show = self.config_parser.getboolean("Client", "show")
             self.client_name = self.config_parser.get("Client", "name")
             self.client_mode = self.config_parser.get("Client", "mode")
             self.client_command = self.config_parser.get("Client", "command")
         else:
+            self.client_show = True
             self.client_name = "ncmpc++"
             self.client_mode = "gnome-terminal"
             self.client_command = "ncmpcpp"
@@ -137,6 +139,9 @@ class IndiMPCPreferencesDialog(gtk.Window):
         self.grab_mmkeys_check = gtk.CheckButton("Grab multimedia keys")
         self.grab_mmkeys_check.set_active(self.config.general_grab_keys)
         general_prefs.pack_start(self.grab_mmkeys_check, fill=False, expand=False)
+        self.show_client_check = gtk.CheckButton("Show client button in notification")
+        self.show_client_check.set_active(self.config.client_show)
+        general_prefs.pack_start(self.show_client_check, fill=False, expand=False)
         prefs_vbox.append_page(general_prefs, gtk.Label("Desktop/UI"))
 
         server_prefs = gtk.VBox()
@@ -229,6 +234,7 @@ class IndiMPCPreferencesDialog(gtk.Window):
         self.config.set("MPD", "host", self.host_entry.get_text())
         self.config.set("MPD", "port", int(self.port_spin.get_value()))
         self.config.set("MPD", "password", self.password_entry.get_text())
+        self.config.set("Client", "show", self.show_client_check.get_active())
         self.config.set("Client", "name", self.name_entry.get_text())
         self.config.set("Client", "mode", self.mode_entry.get_model()[self.mode_entry.get_active()][0])
         self.config.set("Client", "command", self.command_entry.get_text())
@@ -395,7 +401,8 @@ class IndiMPDClient(object):
         self.notification.set_property("icon-name", self.nstatus)
         if "actions" in pynotify.get_server_caps():
             self.notification.clear_actions()
-            self.notification.add_action(self.config.client_name, self.config.client_name, self.launch_player)
+            if self.config.client_show:
+                self.notification.add_action(self.config.client_name, self.config.client_name, self.launch_player)
             self.notification.add_action("system-run", "P", self.open_preferences)
             self.notification.add_action("media-skip-backward", "Previous", self.play_previous)
             currentstatus = self.mpdclient.status()["state"]
