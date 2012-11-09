@@ -352,35 +352,34 @@ class IndiMPDClient(object):
         elif action == "Prev":
             self.play_previous()
 
-    # Returns song title
+     # Returns song title
+    def get_title(self, songdata):
+        if songdata.has_key("title"):
+            if songdata.has_key("name"): # we can assume it's a radio or stream
+                # we split the title from the info we have
+                # for streams, "title" is usually of the form "artist - title"
+                return songdata["title"].split(" - ")[1]
+            else:
+                return songdata["title"]
+        return songdata["file"] # we return the file path
+
+    # Returns song artist
+    def get_artist(self, songdata):
+        if songdata.has_key("name"): # we can assume it's a radio or stream
+            if songdata.has_key("title"): # we grab the artist info from the title
+                return songdata["title"].split(" - ")[0]
+        elif songdata.has_key("artist"):
+            return songdata["artist"]
+        return ""
 
     def status_loop(self):
-        def get_title(songdata):
-            if songdata.has_key("title"):
-                if songdata.has_key("name"): # we can assume it's a radio or stream
-                    # we split the title from the info we have
-                    # for streams, "title" is usually of the form "artist - title"
-                    return songdata["title"].split(" - ")[1]
-                else:
-                    return songdata["title"]
-            return songdata["file"] # we return the file path
-
-        # Returns song artist
-        def get_artist(songdata):
-            if songdata.has_key("name"): # we can assume it's a radio or stream
-                if songdata.has_key("title"): # we grab the artist info from the title
-                    return songdata["title"].split(" - ")[0]
-            elif songdata.has_key("artist"):
-                return songdata["artist"]
-            return ""
-
         currentstatus = self.mpdclient.status()["state"]
         self.nstatus = status_icons[currentstatus]
         currentsongdata = self.mpdclient.currentsong()
         if currentsongdata != {}:
             if currentsongdata != self.oldsongdata:
-                self.ntitle = get_title(currentsongdata)
-                nartist = get_artist(currentsongdata)
+                self.ntitle = self.get_title(currentsongdata)
+                nartist = self.get_artist(currentsongdata)
                 self.nartist = ", ".join(str(x) for x in nartist) if isinstance(nartist, list) else nartist
         if currentstatus != self.oldstatus or currentsongdata != self.oldsongdata:
             self.notify()
@@ -390,19 +389,36 @@ class IndiMPDClient(object):
         return True
 
     def notify(self):
-        if self.mpdclient.currentsong() != {}:
-            if "body" in pynotify.get_server_caps():
-                self.notification.set_property("summary", self.ntitle)
-                if "body-markup" in pynotify.get_server_caps():
-                    self.notification.set_property("body", "by <i>" + self.nartist + "</i>")
-                else:
-                    self.notification.set_property("body", "by " + self.nartist)
+        def fill_with(artist, title, current=True):
+            if not current:
+                head = "[WOULD PLAY] "
             else:
-                self.notification.set_property("summary", self.ntitle + " - " + self.nartist)
+                head = ""
+            if artist not in ["", None]:
+                if "body" in pynotify.get_server_caps():
+                    self.notification.set_property("summary", head + title)
+                    if "body-markup" in pynotify.get_server_caps():
+                        self.notification.set_property("body", "by <i>" + artist + "</i>")
+                    else:
+                        self.notification.set_property("body", "by " + artist)
+                else:
+                    self.notification.set_property("summary", head + title + " - " + artist)
+            else:
+                self.notification.set_property("summary", head + title)
+                if "body" in pynotify.get_server_caps():
+                    self.notification.set_property("body", "")
+
+        if self.mpdclient.currentsong() != {}:
+            fill_with(self.nartist, self.ntitle)
         else:
-            self.notification.set_property("summary", "Empty playlist!")
-            if "body" in pynotify.get_server_caps():
-                self.notification.set_property("body","Add some songs to the playlist, silly!")
+            if self.mpdclient.playlist() == []:
+                self.notification.set_property("summary", "Empty playlist!")
+                if "body" in pynotify.get_server_caps():
+                    self.notification.set_property("body","Add some songs to the playlist, silly!")
+            else:
+                title = self.get_title(self.mpdclient.playlistinfo(0)[0])
+                artist = self.get_artist(self.mpdclient.playlistinfo(0)[0])
+                fill_with(artist, title, current=False)
 
         self.notification.set_property("icon-name", self.nstatus)
 
@@ -411,7 +427,7 @@ class IndiMPDClient(object):
             if self.config.client_show:
                 self.notification.add_action(self.config.client_name, self.config.client_name, self.launch_player)
             self.notification.add_action("system-run", "P", self.open_preferences)
-            if self.mpdclient.currentsong() != {}:
+            if self.mpdclient.currentsong() != {} or self.mpdclient.playlist() != []:
                 self.notification.add_action("media-skip-backward", "Previous", self.play_previous)
                 currentstatus = self.mpdclient.status()["state"]
                 if currentstatus == "play":
